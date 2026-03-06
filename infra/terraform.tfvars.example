@@ -1,0 +1,21 @@
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to git - it contains sensitive data!
+
+# OCI Authentication
+tenancy_ocid     = "ocid1.tenancy.oc1..xxxxxxxx"
+user_ocid        = "ocid1.user.oc1..xxxxxxxx"
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path = "~/.oci/oci_api_key.pem"
+region           = "us-ashburn-1"
+
+# Compartment where resources will be created
+compartment_ocid = "ocid1.compartment.oc1..xxxxxxxx"
+
+# SSH public key for instance access
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAA... your-email@example.com"
+
+# Optional: Customize instance
+# instance_name = "my-immich-server"
+# ocpus = 4
+# memory_in_gbs = 24
+# boot_volume_size_in_gbs = 120
