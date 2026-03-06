@@ -1,222 +1,85 @@
-# Self-Hosted Immich Server on Oracle ARM Instance
+# Self-Hosted Infrastructure
 
-## Overview
-A self-hosted photo management server using Docker on Oracle's 24GB memory ARM instance. Includes BusyBox monitoring to prevent termination.
+> Family-friendly home cloud running on Oracle Cloud Free Tier + Backblaze B2
 
-## Requirements
-- Oracle cloud account with ARM instance (24GB memory)
-- SSH access to instance
-- Basic knowledge of Docker
+## 🚀 Quick Start
 
-## Architecture
-- **Immich Service**: Photo management application in Docker container
-- **BusyBox Monitor**: Lightweight process to prevent instance termination
-- **Hybrid Storage**: Backblaze B2 for original photos, OCI block volume for thumbnails
+**New here?** → [Getting Started Guide](docs/00-getting-started/00-index.md)
 
-## Infrastructure Architecture Diagram
-
-### Hybrid Storage Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              INTERNET                                             │
-└─────────────────────────────────────────────────────────────────────────────────┘
-                                        │
-                    ┌───────────────────┴───────────────────┐
-                    │                                       │
-                    ▼                                       ▼
-┌──────────────────────────────────┐          ┌──────────────────────────────┐
-│      Oracle Cloud (OCI)          │          │      Backblaze B2            │
-│                                  │          │                              │
-│  ┌────────────────────────────┐  │          │  ┌────────────────────────┐  │
-│  │  Compute Instance (ARM)    │  │          │  │  immich-photos Bucket  │  │
-│  │  VM.Standard.A1.Flex       │  │          │  │                        │  │
-│  │  4 OCPUs | 24GB RAM        │  │          │  │  ┌──────────────────┐  │  │
-│  │                            │  │          │  │  │  Original Photos │  │  │
-│  │  ┌──────────────────────┐  │  │          │  │  │  RAW, JPG, etc.  │  │  │
-│  │  │ Docker Environment   │  │  │          │  │  └──────────────────┘  │  │
-│  │  │                      │  │  │          │  │                        │  │
-│  │  │ ┌─────────────────┐  │  │  │          │  └────────────────────────┘  │
-│  │  │ │ Immich Container│  │  │  │          │                              │
-│  │  │ │                 │  │  │  │          └──────────────────────────────┘
-│  │  │ │ ┌───────────┐   │  │  │  │                        ▲
-│  │  │ │ │Thumbnails │   │  │  │  │                        │
-│  │  │ │ │  Cache    │   │  │  │  │         rclone mount   │
-│  │  │ │ │  (local)  │   │  │  │  │         (read-only)    │
-│  │  │ │ └─────┬─────┘   │  │  │  │                        │
-│  │  │ │       │         │  │  │  └────────────────────────┘
-│  │  │ │ ┌─────┴─────┐   │  │  │
-│  │  │ │ │  B2 Mount │   │  │  │     Fast Access Pattern:
-│  │  │ │ │  (ro)     │◄──┼──┼──┼───── Thumbnails served locally
-│  │  │ │ └───────────┘   │  │  │     Photos streamed from B2
-│  │  │ └─────────────────┘  │  │
-│  │  └──────────────────────┘  │
-│  │                            │
-│  │  ┌──────────────────────┐  │
-│  │  │ BusyBox Monitor      │  │
-│  │  │ (Health Check 60s)   │  │
-│  │  └──────────────────────┘  │
-│  └────────────────────────────┘
-│             │
-│  ┌──────────┴──────────┐
-│  │ Block Volume (200GB)│
-│  │ Thumbnails Only     │
-│  └─────────────────────┘
-└──────────────────────────────────┘
-```
-
-### Storage Flow
-
-```
-User Upload ──┬──► Original Photo ──► Backblaze B2 (Permanent Storage)
-              │
-              └──► Thumbnails ─────► OCI Block Volume (200GB Cache)
-                                           │
-                                           ▼
-                              ┌──────────────────────┐
-                              │   Immich Web UI      │
-                              │   (Fast Serving)     │
-                              └──────────────────────┘
-```
-
-### Generating Infrastructure Diagrams
-
-You can visualize the OpenTofu infrastructure using these commands:
-
-**1. Generate Resource Graph (DOT format):**
 ```bash
-cd infra
-tofu init
-tofu plan -out=tfplan
-tofu graph -plan=tfplan > graph.dot
+# TL;DR
+./scripts/setup/install.sh  # One-time setup
+./start.sh                  # Start everything
 ```
 
-**2. Convert to PNG (requires Graphviz):**
-```bash
-# Install Graphviz first
-# macOS: brew install graphviz
-# Ubuntu: sudo apt-get install graphviz
+## What Is This?
 
-dot -Tpng graph.dot -o infrastructure-graph.png
+A production-ready, cost-effective (~$7/month) self-hosted infrastructure for:
+- 📸 **Photos** (Immich - like Google Photos but private)
+- 📊 **Monitoring** (Grafana dashboards)
+- 🔒 **Automatic SSL** (Let's Encrypt)
+- 💾 **Backups** (Automated to Backblaze B2)
+- 💰 **$0 hosting** (Oracle Cloud Free Tier)
+
+## 📚 Documentation
+
+| Topic | Location |
+|-------|----------|
+| **Getting Started** | [00-getting-started/](docs/00-getting-started/) |
+| **Architecture** | [01-architecture/](docs/01-architecture/) |
+| **Setup Guide** | [02-setup/](docs/02-setup/) |
+| **Daily Operations** | [03-operations/](docs/03-operations/) |
+| **Service Docs** | [04-services/](docs/04-services/) |
+| **Architecture Decisions** | [05-development/](docs/05-development/) |
+
+## 🏗️ Architecture
+
+```
+Internet → Traefik (SSL) → Services (Immich, Grafana)
+                ↓
+         Backblaze B2 (Photos & Backups)
 ```
 
-**3. Generate JSON representation for other tools:**
-```bash
-tofu show -json tfplan > plan.json
+- **Single ARM instance** (24GB RAM, Oracle Free Tier)
+- **Hybrid storage**: Local cache + B2 primary
+- **Service isolation**: Each service independent
+- **Backup-first**: Everything in B2
+
+See [Architecture Overview](docs/01-architecture/overview.md) for details.
+
+## 💰 Cost
+
+| Service | Monthly Cost |
+|---------|-------------|
+| Oracle OCI | **$0** |
+| Backblaze B2 (1TB) | **~$7** |
+| **Total** | **~$7/month** |
+
+## 📁 Project Structure
+
+```
+selfhost/
+├── docs/               # 📚 Documentation
+├── infra/              # Terraform for OCI
+├── local/              # Local helper scripts
+└── server/             # Docker Compose stacks
+    ├── traefik/
+    ├── immich/
+    └── monitoring/
 ```
 
-**4. View simplified resource list:**
-```bash
-tofu state list
-```
+## 🎯 Status
 
-## Getting Started
-1. **SSH into your Oracle instance**
-2. **Clone this repository**
-   ```bash
-   git clone https://github.com/your-repo/immich-oracle-setup.git
-   cd immich-oracle-setup
-   ```
-3. **Run setup script (on server)**
-   ```bash
-   ./server/setup.sh
-   ```
-4. **Start services (on server)**
-   ```bash
-   ./server/start-services.sh
-   ```
+**Phase 1**: ✅ Complete (Immich + Monitoring)
 
-## Directory Structure
-- `server/` - Scripts to run on the Oracle server (setup, start/stop services)
-- `local/` - Scripts to run on your local machine (SSH helpers, etc.)
-- `infra/` - OpenTofu/Terraform infrastructure code for Oracle Cloud
+**Phase 2**: Planned (Nextcloud)
 
-## Infrastructure Setup (OpenTofu)
+See [Roadmap](docs/01-architecture/roadmap.md) for full details.
 
-The `infra/` directory contains OpenTofu code to provision all Oracle Cloud Infrastructure:
+## 🤝 Contributing
 
-### Prerequisites
-- [OpenTofu](https://opentofu.org/) or Terraform installed
-- OCI CLI configured with API keys
-- SSH key pair generated
+See [Architecture Decisions](docs/05-development/decisions.md) for design rationale.
 
-### Setup Steps
+---
 
-1. **Configure OCI credentials:**
-   ```bash
-   cd infra
-   cp terraform.tfvars.example terraform.tfvars
-   # Edit terraform.tfvars with your OCI credentials
-   ```
-
-2. **Initialize OpenTofu:**
-   ```bash
-   tofu init
-   ```
-
-3. **Plan the infrastructure:**
-   ```bash
-   tofu plan -out=tfplan
-   ```
-
-4. **Apply the infrastructure:**
-   ```bash
-   tofu apply tfplan
-   ```
-
-5. **Get connection details:**
-   ```bash
-   tofu output
-   ```
-
-This will create:
-- Virtual Cloud Network (VCN) with subnet
-- Internet Gateway and Route Table
-- Security List (firewall rules for SSH and port 8080)
-- ARM compute instance (4 OCPUs, 24GB RAM)
-- Block volume (200GB) for thumbnails and cache
-
-## Backblaze B2 Setup
-
-### Why Hybrid Storage?
-- **Thumbnails on OCI**: Frequently accessed, need fast I/O
-- **Originals on B2**: Cost-effective long-term storage (~$6/TB/month)
-- **Reduced API calls**: Thumbnails cached locally, minimizing B2 transactions
-
-### Setup Steps
-
-1. **Create a Backblaze B2 account**: https://www.backblaze.com/b2/cloud-storage.html
-
-2. **Create a bucket**:
-   - Name it `immich-photos` (or your preferred name)
-   - Set to private
-
-3. **Generate Application Keys**:
-   - Go to App Keys in B2 console
-   - Create a new key with read/write access to your bucket
-   - Save the Key ID and Application Key
-
-4. **Configure the server**:
-   ```bash
-   cd server
-   cp .env.example .env
-   # Edit .env with your B2 credentials
-   ```
-
-5. **Run setup**:
-   The setup script will automatically:
-   - Install rclone
-   - Configure B2 mount
-   - Mount B2 bucket as read-only volume
-   - Set up local directories for thumbnails
-5. **Access Immich at** `http://<your-instance-ip>:8080`
-
-## Notes
-- Ensure your security group allows port 8080
-- The BusyBox container runs a health check every 60 seconds
-- **Storage Architecture**:
-  - Original photos stored in Backblaze B2 (~$6/TB/month)
-  - Thumbnails cached on 200GB OCI block volume for fast access
-  - B2 bucket mounted via rclone with read-only access to Immich
-- **Cost Optimization**: Local thumbnail cache minimizes B2 API calls (Class B transactions)
-- **Backup Strategy**: B2 provides automatic redundancy and versioning for original photos
+**[📖 Read the Docs](docs/README.md)** | **[🚀 Get Started](docs/00-getting-started/00-index.md)**
