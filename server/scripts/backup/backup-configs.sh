@@ -11,8 +11,8 @@ CONFIG_DIRS=(
     "/home/ubuntu/selfhost/server"
     "/data/immich"
 )
-B2_BUCKET="${B2_BACKUP_BUCKET:-backups}"
-B2_PATH="${B2_BACKUP_PATH:-configs}"
+B2_BUCKET="${B2_BUCKET_NAME:-sluo-personal-b2}"
+B2_PATH="${B2_BACKUPS_PATH:-backups/configs}"
 LOG_FILE="/var/log/config-backup.log"
 LAST_BACKUP_FILE="/tmp/last-config-backup"
 

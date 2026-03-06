@@ -8,7 +8,7 @@ set -e
 
 # Configuration
 BACKUP_ROOT="/data/backups/weekly"
-B2_BUCKET="${B2_BACKUP_BUCKET:-backups}"
+B2_BUCKET="${B2_BUCKET_NAME:-sluo-personal-b2}"
 RETENTION_WEEKS=4
 DATE=$(date +%Y%m%d)
 LOG_FILE="/var/log/weekly-backup.log"
@@ -51,12 +51,12 @@ done
 # Sync to B2
 if command -v rclone &> /dev/null; then
     log "Syncing weekly backup to B2..."
-    rclone sync "$WEEKLY_DIR" "backblaze:${B2_BUCKET}/weekly/${DATE}/"
+    rclone sync "$WEEKLY_DIR" "backblaze:${B2_BUCKET}/backups/weekly/${DATE}/"
     log "✓ Weekly backup synced to B2"
     
     # Cleanup old weekly backups from B2
     log "Cleaning up old weekly backups..."
-    rclone delete --min-age ${RETENTION_WEEKS}w "backblaze:${B2_BUCKET}/weekly/"
+    rclone delete --min-age ${RETENTION_WEEKS}w "backblaze:${B2_BUCKET}/backups/weekly/"
 fi
 
 # Cleanup local backups

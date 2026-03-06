@@ -115,16 +115,33 @@ This will:
 2. Start Immich (photos)
 3. Optionally start monitoring
 
-### Step 5: Configure DNS (5 min)
+### Step 5: Configure DNS & SSL (10 min)
 
-Point your domain to the server:
+**Option A: Cloudflare (Recommended)**
 
-```
-photos.yourdomain.com  A  <your-server-ip>
-grafana.yourdomain.com A  <your-server-ip>
-```
+1. In Cloudflare dashboard, add A records:
+   ```
+   photos.yourdomain.com  A  <your-server-ip>
+   grafana.yourdomain.com A  <your-server-ip>
+   ```
+
+2. Set SSL/TLS mode to "Full (strict)"
+
+3. Create Origin Certificate:
+   ```bash
+   ./scripts/setup/cloudflare-origin-cert.sh
+   ```
+   This creates a 15-year certificate and backs it up to B2.
+
+**Option B: Other DNS Provider**
+
+1. Add A records at your DNS provider
+2. Traefik will automatically get Let's Encrypt certificates
+3. Ensure port 80 is open for ACME challenge
 
 Wait 2-5 minutes for DNS to propagate.
+
+For detailed instructions, see [Cloudflare Origin Certificate Setup](../02-setup/cloudflare-origin-cert.md)
 
 ### Step 6: Verify
 

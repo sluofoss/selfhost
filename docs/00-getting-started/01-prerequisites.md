@@ -17,18 +17,32 @@
 - 200GB block storage
 - 10TB/month outbound data
 
-### 2. Domain Name
+### 2. Domain Name + DNS Management
 
 **Why**: SSL certificates require a real domain
 
-**Options**:
-- Buy: Namecheap, Cloudflare (~$10/year)
-- Free: DuckDNS, No-IP
-- Use existing subdomain
+**Recommended**: Cloudflare (free tier includes DNS + SSL)
 
-**You'll need**:
-- Ability to add A records
-- Subdomains: `photos.yourdomain.com`, `grafana.yourdomain.com`
+**Setup**:
+1. Transfer or register domain at [Cloudflare](https://dash.cloudflare.com)
+2. Add A records pointing to your **reserved** server IP:
+   - `photos.yourdomain.com → <server-ip>`
+   - `grafana.yourdomain.com → <server-ip>`
+3. SSL/TLS mode: Set to "Full (strict)"
+
+**Note**: The infrastructure uses a **reserved public IP** that persists across server reboots. You only need to configure DNS once!
+
+**Note**: The infrastructure uses a **reserved public IP** that persists across server reboots. You only need to configure DNS once!
+
+**Alternative**: Any DNS provider (Namecheap, etc.) + Let's Encrypt
+
+**Why Cloudflare is recommended**:
+- Free DNS with global CDN
+- Built-in DDoS protection
+- Origin Certificates (15-year SSL, no renewal automation needed)
+- No need to manage DNS separately from OCI
+
+**For this setup**: We use Cloudflare Origin Certificates (simpler than Let's Encrypt with Cloudflare)
 
 ### 3. Backblaze B2
 

@@ -42,7 +42,14 @@ This folder contains everything you need to understand, set up, and operate the 
 
 **When**: Setting up infrastructure from scratch
 
-Currently placeholder for future infrastructure guides.
+| File | Purpose |
+|------|---------|
+| [dns-configuration.md](../02-setup/dns-configuration.md) | DNS setup (Cloudflare recommended) |
+| [cloudflare-origin-cert.md](../02-setup/cloudflare-origin-cert.md) | SSL certificates via Cloudflare |
+| [b2-bucket-structure.md](../02-setup/b2-bucket-structure.md) | Single B2 bucket organization |
+| [opentofu-ip-behavior.md](../02-setup/opentofu-ip-behavior.md) | Reserved IP behavior & recovery |
+| [b2-bucket-structure.md](../02-setup/b2-bucket-structure.md) | Single B2 bucket organization |
+| [opentofu-ip-behavior.md](../02-setup/opentofu-ip-behavior.md) | Reserved IP behavior & recovery |
 
 ### 03-operations/
 

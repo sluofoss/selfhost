@@ -59,14 +59,25 @@ resource "oci_core_security_list" "immich_security_list" {
     }
   }
 
-  # Immich web UI
+  # HTTP - Required for Let's Encrypt and Cloudflare
   ingress_security_rules {
     protocol    = "6" # TCP
     source      = "0.0.0.0/0"
-    description = "Immich Web UI"
+    description = "HTTP"
     tcp_options {
-      min = 8080
-      max = 8080
+      min = 80
+      max = 80
+    }
+  }
+
+  # HTTPS
+  ingress_security_rules {
+    protocol    = "6" # TCP
+    source      = "0.0.0.0/0"
+    description = "HTTPS"
+    tcp_options {
+      min = 443
+      max = 443
     }
   }
 
@@ -109,7 +120,7 @@ resource "oci_core_instance" "immich_instance" {
 
   create_vnic_details {
     subnet_id        = oci_core_subnet.immich_subnet.id
-    assign_public_ip = true
+    assign_public_ip = false # We'll use a reserved public IP instead
     display_name     = "immich-vnic"
   }
 
@@ -118,6 +129,37 @@ resource "oci_core_instance" "immich_instance" {
   }
 
   preserve_boot_volume = false
+}
+
+# Get the VNIC attachment for the instance
+data "oci_core_vnic_attachments" "immich_vnic_attachments" {
+  compartment_id = var.compartment_ocid
+  instance_id    = oci_core_instance.immich_instance.id
+}
+
+# Get the VNIC details
+data "oci_core_vnic" "immich_vnic" {
+  vnic_id = data.oci_core_vnic_attachments.immich_vnic_attachments.vnic_attachments[0].vnic_id
+}
+
+# Get the private IPs for the VNIC
+data "oci_core_private_ips" "immich_private_ips" {
+  vnic_id = data.oci_core_vnic.immich_vnic.id
+}
+
+# Reserved Public IP - persists across instance stop/start
+resource "oci_core_public_ip" "immich_reserved_ip" {
+  compartment_id = var.compartment_ocid
+  display_name   = "immich-reserved-public-ip"
+  lifetime       = "RESERVED" # Reserved, not ephemeral
+
+  # Associate with the instance's primary private IP
+  private_ip_id = data.oci_core_private_ips.immich_private_ips.private_ips[0].id
+
+  # Prevent accidental destruction - requires explicit removal
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Block Volume for Immich thumbnails and cache

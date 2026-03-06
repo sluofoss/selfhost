@@ -8,8 +8,8 @@ set -e
 
 # Configuration
 BACKUP_DIR="/data/backups/postgres"
-B2_BUCKET="${B2_BACKUP_BUCKET:-backups}"
-B2_PATH="${B2_BACKUP_PATH:-postgres}"
+B2_BUCKET="${B2_BUCKET_NAME:-sluo-personal-b2}"
+B2_PATH="${B2_BACKUPS_PATH:-backups/postgres}"
 RETENTION_DAYS=7
 DATE=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="/var/log/postgres-backup.log"
