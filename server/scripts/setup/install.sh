@@ -252,14 +252,20 @@ EOF
 setup_docker_compose() {
     log "Setting up Docker Compose services..."
     
-    cd "$SCRIPT_DIR"
+    # Create proxy network (used by all services)
+    docker network create proxy 2>/dev/null || true
     
-    # Create networks
-    docker network create frontend 2>/dev/null || true
-    docker network create backend 2>/dev/null || true
-    
-    # Pull images
+    # Pull images for each service
+    cd "$SCRIPT_DIR/../traefik"
     docker compose pull
+    
+    cd "$SCRIPT_DIR/../immich"
+    docker compose pull
+    
+    if [ -d "$SCRIPT_DIR/../monitoring" ]; then
+        cd "$SCRIPT_DIR/../monitoring"
+        docker compose pull
+    fi
     
     log_success "Docker Compose setup completed"
 }
@@ -287,13 +293,17 @@ main() {
     log "======================================"
     log ""
     log "Next steps:"
-    log "  1. Configure your .env file if not already done"
-    log "  2. Start services: docker compose up -d"
-    log "  3. Access services at:"
+    log "  1. Configure your .env files:"
+    log "     - cp .env.example .env"
+    log "     - cp traefik/.env.example traefik/.env"
+    log "     - cp immich/.env.example immich/.env"
+    log "  2. Edit each .env file with your configuration"
+    log "  3. Start services: ./start.sh"
+    log "  4. Access services at:"
     log "     - Traefik Dashboard: http://$(hostname -I | awk '{print $1}'):8080"
-    log "     - Immich: https://photos.${DOMAIN} (after DNS setup)"
+    log "     - Immich: https://photos.<your-domain> (after DNS setup)"
     log ""
-    log "  4. Set up your domain DNS to point to this server"
+    log "  5. Set up your domain DNS to point to this server"
     log ""
     log "For more information, see docs/architecture-and-strategy.md"
 }

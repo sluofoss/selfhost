@@ -1,0 +1,70 @@
+version: '3.8'
+
+name: traefik
+
+networks:
+  proxy:
+    driver: bridge
+    name: proxy  # Named network for other services to connect to
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    env_file:
+      - .env
+    command:
+      - --api.dashboard=true
+      - --api.insecure=false
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=proxy
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --log.level=INFO
+      - --accesslog=true
+      - --ping=true
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+      - ./traefik.yml:/traefik.yml:ro
+      - ./dynamic:/dynamic:ro
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "traefik", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.middlewares=auth@file"
+
+  # BusyBox monitor to prevent OCI termination
+  busybox-monitor:
+    image: busybox:latest
+    container_name: busybox-monitor
+    restart: always
+    command: >
+      sh -c "while true; do
+        echo \"[\$$(date)] Health check - Instance active\";
+        sleep 60;
+      done"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=false"
