@@ -133,6 +133,10 @@ Visit:
 - `https://traefik.yourdomain.com` - Traefik dashboard
 - `https://grafana.yourdomain.com` - Grafana (if enabled)
 
+## Documentation Guide
+
+Not sure where to find something? See [Documentation Structure](02-docs-structure.md) for a complete guide to what's in each folder.
+
 ## Next Steps
 
 - 📖 Learn about [daily operations](../03-operations/daily-operations.md)
