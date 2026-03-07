@@ -9,7 +9,7 @@ fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
 private_key_path = "~/.oci/oci_api_key.pem"
 region           = "us-ashburn-1"
 
-# Compartment where resources will be created
+# Compartment where resources will be created (root compartment is the same as tenancy_ocid)
 compartment_ocid = "ocid1.compartment.oc1..xxxxxxxx"
 
 # SSH public key path for instance access
