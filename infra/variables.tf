@@ -35,7 +35,7 @@ variable "ssh_public_key_path" {
 }
 
 variable "repo_url" {
-  description = "Git repository URL to clone on the server"
+  description = "Git repository URL to clone on the server (must be public)"
   type        = string
   default     = "https://github.com/sluofoss/selfhost.git"
 }

@@ -16,8 +16,9 @@ compartment_ocid = "ocid1.compartment.oc1..xxxxxxxx"
 # Generate with: ssh-keygen -t ed25519 -C "your-email@example.com"
 ssh_public_key_path = "~/.ssh/id_ed25519.pub"
 
-# Git repository URL (public repo, no auth needed)
-# repo_url = "https://github.com/sluofoss/selfhost.git"
+# Git repository URL (must be a public repo, no auth needed)
+# Use the official template or your own fork
+repo_url = "https://github.com/sluofoss/selfhost.git"
 
 # Optional: Customize instance
 # instance_name = "selfhost-server"
