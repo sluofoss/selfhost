@@ -1,3 +1,6 @@
+# private planning files
+workbench/*
+
 # OS files
 .DS_Store
 Thumbs.db
