@@ -6,6 +6,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LOG_FILE="/var/log/selfhost-setup.log"
 
 # Colors for output
@@ -136,14 +137,14 @@ configure_b2() {
     log "Configuring Backblaze B2..."
     
     # Check if .env exists
-    if [ ! -f "$SCRIPT_DIR/.env" ]; then
+    if [ ! -f "$SERVER_DIR/.env" ]; then
         log_error ".env file not found! Please copy .env.example to .env and configure it."
         exit 1
     fi
     
     # Load environment variables
     set -a
-    source "$SCRIPT_DIR/.env"
+    source "$SERVER_DIR/.env"
     set +a
     
     # Check B2 credentials
@@ -153,17 +154,15 @@ configure_b2() {
         return
     fi
     
-    # Create rclone config
-    mkdir -p ~/.config/rclone
-    cat > ~/.config/rclone/rclone.conf << EOF
-[backblaze]
-type = b2
-account = ${B2_APPLICATION_KEY_ID}
-key = ${B2_APPLICATION_KEY}
-hard_delete = false
-EOF
+    if [ -z "$B2_BUCKET_NAME" ] || [ "$B2_BUCKET_NAME" = "your-bucket-name" ]; then
+        log_warning "B2_BUCKET_NAME not configured. Skipping B2 mount setup."
+        return
+    fi
     
-    # Create systemd service for B2 mount
+    # Configure rclone via environment variables (no plaintext rclone.conf needed)
+    # rclone supports RCLONE_CONFIG_<REMOTE>_* env vars natively
+    
+    # Create systemd service for B2 mount using env vars from .env
     sudo tee /etc/systemd/system/rclone-b2-mount.service > /dev/null << EOF
 [Unit]
 Description=RClone Backblaze B2 Mount
@@ -172,15 +171,19 @@ Wants=network-online.target
 
 [Service]
 Type=notify
-Environment=RCLONE_CONFIG=/home/$USER/.config/rclone/rclone.conf
-ExecStart=/usr/bin/rclone mount backblaze:${B2_PHOTOS_BUCKET:-immich-photos} /data/immich/b2-mount \\
-    --allow-other \\
-    --vfs-cache-mode writes \\
-    --vfs-cache-max-size 10G \\
-    --buffer-size 256M \\
-    --dir-cache-time 72h \\
-    --timeout 1h \\
-    --umask 002
+EnvironmentFile=$SERVER_DIR/.env
+Environment=RCLONE_CONFIG_BACKBLAZE_TYPE=b2
+Environment=RCLONE_CONFIG_BACKBLAZE_HARD_DELETE=false
+ExecStart=/bin/bash -c '/usr/bin/rclone mount backblaze:\${B2_BUCKET_NAME}/\${B2_PHOTOS_PATH:-photos} /data/immich/b2-mount \
+    --b2-account \${B2_APPLICATION_KEY_ID} \
+    --b2-key \${B2_APPLICATION_KEY} \
+    --allow-other \
+    --vfs-cache-mode writes \
+    --vfs-cache-max-size 10G \
+    --buffer-size 256M \
+    --dir-cache-time 72h \
+    --timeout 1h \
+    --umask 002'
 ExecStop=/bin/fusermount -uz /data/immich/b2-mount
 Restart=on-failure
 RestartSec=10
@@ -233,13 +236,13 @@ setup_cron() {
     (crontab -l 2>/dev/null || true; cat << EOF
 # Self-Hosted Infrastructure Backups
 # Daily database backup at 2:00 AM
-0 2 * * * $SCRIPT_DIR/scripts/backup/backup-postgres.sh >> /var/log/postgres-backup.log 2>&1
+0 2 * * * $SERVER_DIR/scripts/backup/backup-postgres.sh >> /var/log/postgres-backup.log 2>&1
 
 # Hourly config backup
-0 * * * * $SCRIPT_DIR/scripts/backup/backup-configs.sh >> /var/log/config-backup.log 2>&1
+0 * * * * $SERVER_DIR/scripts/backup/backup-configs.sh >> /var/log/config-backup.log 2>&1
 
 # Weekly full backup on Sundays at 3:00 AM
-0 3 * * 0 $SCRIPT_DIR/scripts/backup/backup-weekly.sh >> /var/log/weekly-backup.log 2>&1
+0 3 * * 0 $SERVER_DIR/scripts/backup/backup-weekly.sh >> /var/log/weekly-backup.log 2>&1
 EOF
     ) | crontab -
     
@@ -256,14 +259,14 @@ setup_docker_compose() {
     docker network create proxy 2>/dev/null || true
     
     # Pull images for each service
-    cd "$SCRIPT_DIR/../traefik"
+    cd "$SERVER_DIR/traefik"
     docker compose pull
     
-    cd "$SCRIPT_DIR/../immich"
+    cd "$SERVER_DIR/immich"
     docker compose pull
     
-    if [ -d "$SCRIPT_DIR/../monitoring" ]; then
-        cd "$SCRIPT_DIR/../monitoring"
+    if [ -d "$SERVER_DIR/monitoring" ]; then
+        cd "$SERVER_DIR/monitoring"
         docker compose pull
     fi
     
@@ -279,11 +282,32 @@ main() {
     log "======================================"
     
     check_prerequisites
-    install_packages
-    install_docker
-    create_directories
+    
+    # Install packages and Docker if not already done (cloud-init handles this on OCI)
+    if ! command -v docker &> /dev/null; then
+        log "Docker not found - installing system packages..."
+        install_packages
+        install_docker
+    else
+        log_success "Docker already installed (cloud-init)"
+    fi
+    
+    # Create directories if not already done (cloud-init handles this on OCI)
+    if [ ! -d /data/immich ]; then
+        create_directories
+    else
+        log_success "Directory structure already exists (cloud-init)"
+    fi
+    
+    # Configure firewall if not already done (cloud-init handles this on OCI)
+    if ! sudo ufw status | grep -q "Status: active"; then
+        configure_firewall
+    else
+        log_success "Firewall already configured (cloud-init)"
+    fi
+    
+    # These always run (require .env to be configured first)
     configure_b2
-    configure_firewall
     setup_cron
     setup_docker_compose
     
@@ -293,19 +317,15 @@ main() {
     log "======================================"
     log ""
     log "Next steps:"
-    log "  1. Configure your .env files:"
-    log "     - cp .env.example .env"
-    log "     - cp traefik/.env.example traefik/.env"
-    log "     - cp immich/.env.example immich/.env"
-    log "  2. Edit each .env file with your configuration"
-    log "  3. Start services: ./start.sh"
-    log "  4. Access services at:"
+    log "  1. Start the B2 mount: sudo systemctl start rclone-b2-mount"
+    log "  2. Start services: ./start.sh"
+    log "  3. Access services at:"
     log "     - Traefik Dashboard: http://$(hostname -I | awk '{print $1}'):8080"
     log "     - Immich: https://photos.<your-domain> (after DNS setup)"
     log ""
-    log "  5. Set up your domain DNS to point to this server"
+    log "  4. Set up your domain DNS to point to this server"
     log ""
-    log "For more information, see docs/architecture-and-strategy.md"
+    log_warning "Remember to logout and login again if Docker was just installed"
 }
 
 # Run main function

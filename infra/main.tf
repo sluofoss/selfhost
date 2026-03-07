@@ -125,7 +125,10 @@ resource "oci_core_instance" "immich_instance" {
   }
 
   metadata = {
-    ssh_authorized_keys = var.ssh_public_key
+    ssh_authorized_keys = file(var.ssh_public_key_path)
+    user_data = base64encode(templatefile("${path.module}/cloud-init.yml.tpl", {
+      repo_url = var.repo_url
+    }))
   }
 
   preserve_boot_volume = false

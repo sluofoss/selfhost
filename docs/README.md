@@ -12,7 +12,7 @@ A production-ready, cost-effective ($0-7/month) self-hosted infrastructure for p
 |--------------|-------|
 | **Get started immediately** | [Getting Started Guide](00-getting-started/00-index.md) |
 | **Understand the architecture** | [Architecture Overview](01-architecture/overview.md) |
-| **Set it up** | [Setup Guide](02-setup/system-setup.md) |
+| **Set up DNS & SSL** | [DNS Configuration](02-setup/dns-configuration.md) |
 | **Operate it daily** | [Operations Guide](03-operations/daily-operations.md) |
 | **Fix a problem** | [Troubleshooting](03-operations/troubleshooting.md) |
 | **Add a new service** | [Services](04-services/) |
@@ -21,10 +21,10 @@ A production-ready, cost-effective ($0-7/month) self-hosted infrastructure for p
 
 **Current Phase: 1 (Immich Photo Management)**
 
-- ✅ Traefik reverse proxy with SSL
-- ✅ Immich photo server with B2 storage
-- ✅ Automated backups to B2
-- ✅ Monitoring with Grafana/Prometheus
+- Traefik reverse proxy with SSL
+- Immich photo server with B2 storage
+- Automated backups to B2
+- Monitoring with Grafana/Prometheus
 
 **Next**: Phase 2 planning in [Roadmap](01-architecture/roadmap.md)
 
@@ -32,7 +32,7 @@ A production-ready, cost-effective ($0-7/month) self-hosted infrastructure for p
 
 ```bash
 # After initial setup, daily operation is just:
-./start.sh
+cd server && ./start.sh
 ```
 
 ## Architecture Highlights
@@ -40,10 +40,10 @@ A production-ready, cost-effective ($0-7/month) self-hosted infrastructure for p
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   Your Domain   │────▶│   Oracle Cloud   │────▶│  Backblaze B2   │
-│  (SSL via ACME) │     │  (24GB ARM Free) │     │  ($6/TB Photos) │
+│  (Cloudflare)   │     │  (24GB ARM Free) │     │  ($6/TB Photos) │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
                               │
-                              ├── Traefik (reverse proxy)
+                              ├── Traefik (reverse proxy + SSL)
                               ├── Immich (photos)
                               └── Monitoring (Grafana)
 ```
@@ -62,8 +62,8 @@ See [full cost analysis](01-architecture/storage-strategy.md#cost-analysis)
 
 ```
 selfhost/
-├── docs/               # 📚 You're here!
-├── infra/              # Terraform/OpenTofu for OCI
+├── docs/               # You're here!
+├── infra/              # OpenTofu for OCI provisioning
 ├── local/              # Local helper scripts
 └── server/             # Docker Compose stacks
     ├── traefik/        # Reverse proxy
@@ -75,9 +75,9 @@ selfhost/
 ## Getting Help
 
 1. Check [Troubleshooting](03-operations/troubleshooting.md)
-2. Review [Architecture Decisions](05-development/decisions.md)
+2. Review [Architecture Overview](01-architecture/overview.md)
 3. File an issue on GitHub
 
 ---
 
-**Last Updated**: 2024 | **Maintained by**: [Your Name]
+**Last Updated**: March 2026

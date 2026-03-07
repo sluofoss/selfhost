@@ -1,14 +1,14 @@
 # Roadmap
 
-## Current Status: Phase 1 ✅
+## Current Status: Phase 1
 
 **Completed**:
-- ✅ Oracle Cloud infrastructure (Terraform)
-- ✅ Traefik reverse proxy with SSL
-- ✅ Immich photo management
-- ✅ Backblaze B2 storage integration
-- ✅ Automated backups (daily DB, hourly configs)
-- ✅ Basic monitoring (Grafana + Prometheus)
+- Oracle Cloud infrastructure (OpenTofu with cloud-init)
+- Traefik reverse proxy with SSL
+- Immich photo management
+- Backblaze B2 storage integration
+- Automated backups (daily DB, hourly configs, weekly full)
+- Basic monitoring (Grafana + Prometheus)
 
 ## Phase 2: Shared Infrastructure (Planned)
 
@@ -81,12 +81,13 @@
 | 2024-01 | Single instance | Cost, simplicity |
 | 2024-01 | Isolated databases | Easy to maintain, official templates |
 | 2024-01 | Traefik over NPM | Native Docker integration |
-| 2024-01 | B2 primary storage | Cost, durability |
+| 2024-01 | B2 primary storage | Cost, durability, stay within OCI free tier |
+| 2026-03 | Cloud-init provisioning | Reduce manual setup steps |
+| 2026-03 | Single B2 bucket | Simpler management, unified lifecycle |
 
 ### Open Questions
 
 1. **When to implement Phase 2?**
-   - Current RAM usage: ~60%
    - Add 2 more services, then evaluate
 
 2. **Which Phase 4 service first?**
@@ -96,4 +97,3 @@
 3. **Monitoring depth?**
    - Current: Basic Prometheus/Grafana
    - Need: External monitoring (Uptime Kuma)
-

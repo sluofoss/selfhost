@@ -45,7 +45,8 @@ if [ ! -f "$SERVER_DIR/.env" ]; then
 fi
 
 # Load B2 config
-source "$SERVER_DIR/.env"
+set -a; source "$SERVER_DIR/.env"; set +a
+source "$SCRIPT_DIR/../lib/rclone-env.sh"
 
 if [ -z "$B2_APPLICATION_KEY_ID" ] || [ "$B2_APPLICATION_KEY_ID" = "your_key_id_here" ]; then
     echo -e "${RED}Error:${NC} B2 credentials not configured"
@@ -60,19 +61,100 @@ if ! command -v rclone &> /dev/null; then
     exit 1
 fi
 
+# ==========================================
+# HELPER FUNCTIONS
+# ==========================================
+
+update_traefik_config() {
+    # Check if traefik.yml exists
+    if [ ! -f "$TRAEFIK_DIR/traefik.yml" ]; then
+        echo -e "${RED}Error:${NC} traefik.yml not found"
+        return 1
+    fi
+    
+    # Backup original config
+    cp "$TRAEFIK_DIR/traefik.yml" "$TRAEFIK_DIR/traefik.yml.backup.$(date +%Y%m%d)"
+    
+    # Update traefik.yml to use origin certificates
+    cat > "$TRAEFIK_DIR/traefik.yml" << TRAEFIK_CONFIG
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+api:
+  dashboard: true
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: proxy
+  file:
+    directory: /dynamic
+    watch: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certificates:
+          - certFile: /certs/origin-cert.pem
+            keyFile: /certs/origin-key.pem
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: \${ACME_EMAIL}
+      storage: /letsencrypt/acme.json
+      tlsChallenge: {}
+
+log:
+  level: INFO
+  format: common
+
+accessLog:
+  format: common
+
+ping:
+  entryPoint: "web"
+TRAEFIK_CONFIG
+
+    # Update docker-compose.yml to mount certs
+    if [ -f "$TRAEFIK_DIR/docker-compose.yml" ]; then
+        # Check if certs volume already exists
+        if ! grep -q "./certs:/certs:ro" "$TRAEFIK_DIR/docker-compose.yml"; then
+            # Add certs volume to traefik service
+            sed -i '/- .\/dynamic:\/dynamic:ro/a\      - .\/certs:\/certs:ro' "$TRAEFIK_DIR/docker-compose.yml"
+            echo -e "${GREEN}✓${NC} Updated docker-compose.yml to mount certificates"
+        fi
+    fi
+    
+    echo -e "${GREEN}✓${NC} Traefik configuration updated"
+    echo -e "${YELLOW}!${NC} Traefik will use Cloudflare Origin Certificate (15-year validity)"
+    echo ""
+    echo "Note: Let's Encrypt resolver is still configured as fallback"
+}
+
 # Check for existing cert in B2 (recreation scenario)
 echo -e "${BLUE}Checking for existing certificate in B2...${NC}"
 B2_CERT_PATH="backups/certs/origin-cert.pem"
 B2_KEY_PATH="backups/certs/origin-key.pem"
 
-if rclone ls "backblaze:${B2_BUCKET_NAME:-sluo-personal-b2}/certs/" 2>/dev/null | grep -q "origin-cert.pem"; then
+if rclone ls "backblaze:${B2_BUCKET_NAME}/certs/" 2>/dev/null | grep -q "origin-cert.pem"; then
     echo -e "${GREEN}✓${NC} Found existing certificate in B2"
     read -p "Restore from B2 backup instead of creating new? (Y/n): " restore_from_b2
     
     if [[ ! $restore_from_b2 =~ ^[Nn]$ ]]; then
         echo -e "${BLUE}Restoring certificate from B2...${NC}"
         mkdir -p "$CERTS_DIR"
-        rclone copy "backblaze:${B2_BUCKET_NAME:-sluo-personal-b2}/certs/" "$CERTS_DIR/"
+        rclone copy "backblaze:${B2_BUCKET_NAME}/certs/" "$CERTS_DIR/"
         echo -e "${GREEN}✓${NC} Certificate restored from B2"
         
         # Update Traefik config
@@ -228,7 +310,7 @@ mkdir -p /tmp/certs-backup
 cp "$CERTS_DIR"/* /tmp/certs-backup/
 
 # Upload to B2
-if rclone copy /tmp/certs-backup/ "backblaze:${B2_BUCKET_NAME:-sluo-personal-b2}/certs/"; then
+if rclone copy /tmp/certs-backup/ "backblaze:${B2_BUCKET_NAME}/certs/"; then
     echo -e "${GREEN}✓${NC} Certificate backed up to B2"
 else
     echo -e "${YELLOW}!${NC} Failed to backup to B2 (non-critical)"
@@ -246,83 +328,6 @@ echo "======================================"
 echo "Updating Traefik Configuration"
 echo "======================================"
 echo ""
-
-update_traefik_config() {
-    # Check if traefik.yml exists
-    if [ ! -f "$TRAEFIK_DIR/traefik.yml" ]; then
-        echo -e "${RED}Error:${NC} traefik.yml not found"
-        return 1
-    fi
-    
-    # Backup original config
-    cp "$TRAEFIK_DIR/traefik.yml" "$TRAEFIK_DIR/traefik.yml.backup.$(date +%Y%m%d)"
-    
-    # Update traefik.yml to use origin certificates
-    cat > "$TRAEFIK_DIR/traefik.yml" << TRAEFIK_CONFIG
-global:
-  checkNewVersion: false
-  sendAnonymousUsage: false
-
-api:
-  dashboard: true
-
-providers:
-  docker:
-    exposedByDefault: false
-    network: proxy
-  file:
-    directory: /dynamic
-    watch: true
-
-entryPoints:
-  web:
-    address: ":80"
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-  websecure:
-    address: ":443"
-    http:
-      tls:
-        certificates:
-          - certFile: /certs/origin-cert.pem
-            keyFile: /certs/origin-key.pem
-
-certificatesResolvers:
-  letsencrypt:
-    acme:
-      email: ${ACME_EMAIL}
-      storage: /letsencrypt/acme.json
-      tlsChallenge: {}
-
-log:
-  level: INFO
-  format: common
-
-accessLog:
-  format: common
-
-ping:
-  entryPoint: "web"
-TRAEFIK_CONFIG
-
-    # Update docker-compose.yml to mount certs
-    if [ -f "$TRAEFIK_DIR/docker-compose.yml" ]; then
-        # Check if certs volume already exists
-        if ! grep -q "./certs:/certs:ro" "$TRAEFIK_DIR/docker-compose.yml"; then
-            # Add certs volume to traefik service
-            sed -i '/- .\/dynamic:\/dynamic:ro/a\      - .\/certs:\/certs:ro' "$TRAEFIK_DIR/docker-compose.yml"
-            echo -e "${GREEN}✓${NC} Updated docker-compose.yml to mount certificates"
-        fi
-    fi
-    
-    echo -e "${GREEN}✓${NC} Traefik configuration updated"
-    echo -e "${YELLOW}!${NC} Traefik will use Cloudflare Origin Certificate (15-year validity)"
-    echo ""
-    echo "Note: Let's Encrypt resolver is still configured as fallback"
-}
 
 # Run the update
 update_traefik_config
@@ -344,5 +349,5 @@ echo "  2. Test HTTPS: curl -I https://yourdomain.com"
 echo "  3. Verify in Cloudflare dashboard: SSL/TLS → Origin Server"
 echo ""
 echo "If you need to restore this certificate later:"
-echo "  rclone copy backblaze:${B2_BUCKET_NAME:-sluo-personal-b2}/certs/ ./traefik/certs/"
+echo "  rclone copy backblaze:\${B2_BUCKET_NAME}/certs/ ./traefik/certs/"
 echo ""

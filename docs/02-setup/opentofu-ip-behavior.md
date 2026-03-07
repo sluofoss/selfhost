@@ -14,10 +14,10 @@ OpenTofu maintains a **state file** (`terraform.tfstate`) that tracks all resour
 - All associations
 
 When you run `tofu apply`:
-- ✅ **Same state** → IP remains unchanged
-- ✅ **Instance recreated** → IP stays the same, just re-attached
-- ⚠️ **State deleted** → New IP created (bad!)
-- ❌ **Explicit destroy** → IP deleted (avoid!)
+- **Same state** → IP remains unchanged
+- **Instance recreated** → IP stays the same, just re-attached
+- **State deleted** → New IP created (bad!)
+- **Explicit destroy** → IP deleted (avoid!)
 
 ### Protection Mechanisms
 
@@ -37,112 +37,108 @@ This means:
 - `tofu destroy` will **fail** with an error (protects the IP)
 - You must explicitly remove the `prevent_destroy` to delete the IP
 
+## State Backup with apply.sh
+
+The primary way to run OpenTofu is via the `infra/apply.sh` wrapper script. This script:
+
+1. Creates a local timestamped backup of `terraform.tfstate`
+2. Runs `tofu apply` with all passed arguments
+3. On success, uploads state to B2 as both a timestamped version and a "latest" version
+4. Cleans up old local backups (keeps last 10)
+
+```bash
+# Always use apply.sh instead of raw tofu apply
+cd infra
+./apply.sh
+
+# Pass arguments through to tofu
+./apply.sh -auto-approve
+./apply.sh -var="ocpus=2"
+```
+
+This ensures your state file is never lost — even if your local machine dies, you can restore from B2.
+
+**State backup location in B2**:
+```
+<your-bucket>/terraform/terraform.tfstate.<timestamp>/terraform.tfstate
+<your-bucket>/terraform/terraform.tfstate.latest/terraform.tfstate
+```
+
 ## Common Scenarios
 
 ### 1. Normal Operation (Adding/Modifying Resources)
 
 ```bash
-# Add a new service or modify configuration
 cd infra
-tofu apply
+./apply.sh
 
-# Result: IP stays exactly the same ✅
+# Result: IP stays exactly the same
 ```
 
 ### 2. Recreating Instance (Not the IP)
 
 ```bash
-# Instance needs to be recreated (e.g., different image)
 cd infra
-tofu apply
+./apply.sh
 
 # Result: 
 # - Instance is recreated with new OCID
 # - Same reserved IP is detached from old instance
 # - Same reserved IP is attached to new instance
-# - IP address remains unchanged ✅
+# - IP address remains unchanged
 ```
 
 ### 3. Fresh Setup (No State File)
 
 ```bash
-# First time setup or state file deleted
+# First time setup or state file lost
 cd infra
 tofu init
-tofu apply
+./apply.sh
 
 # Result: New reserved IP created
-# You'll need to update DNS once ⚠️
+# You'll need to update DNS once
 ```
 
 ### 4. Complete Teardown and Rebuild
 
 ```bash
-# You want to start completely fresh
 cd infra
 
 # First, manually remove prevent_destroy from main.tf
-tofu apply
+./apply.sh
 
 # Now you can destroy everything
 tofu destroy
 
 # Create new infrastructure
-tofu apply
+./apply.sh
 
-# Result: New reserved IP created ⚠️
+# Result: New reserved IP created
 ```
 
 ## Best Practices
 
-### 1. Backup the State File
+### 1. Always Use apply.sh
+
+The wrapper script automatically backs up state to B2 after each successful apply. Never run raw `tofu apply` without backing up state.
+
+### 2. Restore State from B2
+
+If you lose your local state file:
 
 ```bash
-# Regular backup
-cp infra/terraform.tfstate infra/terraform.tfstate.backup.$(date +%Y%m%d)
-
-# Or use remote state (recommended for production)
-# Configure S3 backend in providers.tf
+# Restore latest state from B2
+rclone copy backblaze:${B2_BUCKET_NAME}/terraform/terraform.tfstate.latest/ ./
 ```
 
-### 2. Store State in Version Control (Carefully)
+### 3. Document the IP
+
+After first creation, note the IP:
 
 ```bash
-# Add to .gitignore to avoid committing sensitive state
-echo "infra/terraform.tfstate*" >> .gitignore
-
-# Or use git-crypt for encrypted state storage
-git-crypt init
-echo "infra/terraform.tfstate filter=git-crypt diff=git-crypt" >> .gitattributes
-```
-
-### 3. Use Remote State Backend (Production)
-
-For production, use remote state (S3, OCI Object Storage, etc.):
-
-```hcl
-# infra/providers.tf
-terraform {
-  backend "s3" {
-    bucket = "my-terraform-state"
-    key    = "selfhost/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-```
-
-### 4. Document the IP
-
-After first creation, document the IP:
-
-```bash
-# Get the IP and save it
 cd infra
-tofu output instance_public_ip > ../RESERVED_IP.txt
-
-# Add to version control (safe, it's just the IP)
-git add ../RESERVED_IP.txt
-git commit -m "Add reserved IP address"
+tofu output instance_public_ip
 ```
 
 ## Recovery Scenarios
@@ -152,7 +148,10 @@ git commit -m "Add reserved IP address"
 If you lose the state file but the IP still exists in OCI:
 
 ```bash
-# Import the existing IP into state
+# Try restoring from B2 first
+rclone copy backblaze:${B2_BUCKET_NAME}/terraform/terraform.tfstate.latest/ ./
+
+# If B2 backup is also lost, import the existing IP into state
 cd infra
 tofu import oci_core_public_ip.immich_reserved_ip <ip-ocid>
 
@@ -166,7 +165,7 @@ If the IP was deleted (rare with `prevent_destroy`):
 ```bash
 # You'll get a new IP
 cd infra
-tofu apply
+./apply.sh
 
 # Get the new IP
 tofu output instance_public_ip
@@ -179,10 +178,10 @@ tofu output instance_public_ip
 
 | Action | IP Changes? | Notes |
 |--------|-------------|-------|
-| `tofu apply` (normal) | ❌ No | IP stays the same |
-| Recreate instance | ❌ No | IP detached/reattached |
-| Fresh setup | ✅ Yes | New IP created |
-| `tofu destroy` | ⚠️ Blocked | `prevent_destroy` stops this |
+| `./apply.sh` (normal) | No | IP stays the same |
+| Recreate instance | No | IP detached/reattached |
+| Fresh setup | Yes | New IP created |
+| `tofu destroy` | Blocked | `prevent_destroy` stops this |
 
 ## Quick Reference
 
@@ -191,22 +190,15 @@ tofu output instance_public_ip
 cd infra && tofu output instance_public_ip
 
 # Safe to re-run anytime (IP won't change)
-tofu apply
+./apply.sh
 
 # Get IP OCID (for imports/recovery)
 tofu output reserved_public_ip_ocid
 
 # If you MUST delete everything:
 # 1. Remove prevent_destroy from main.tf
-# 2. tofu apply
+# 2. ./apply.sh
 # 3. tofu destroy
 ```
 
-## Recommendation
-
-**For your use case**: The IP will remain stable across normal OpenTofu operations. Just:
-1. Don't delete the `terraform.tfstate` file
-2. Don't run `tofu destroy` without removing `prevent_destroy` first
-3. Back up the state file periodically
-
-The IP is designed to be **permanent** for the life of your infrastructure!
+The IP is designed to be **permanent** for the life of your infrastructure.

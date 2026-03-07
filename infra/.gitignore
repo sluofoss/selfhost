@@ -1,13 +1,25 @@
+# Terraform variable files (contain secrets)
 *.tfvars
 *.tfvars.json
+
+# Provider cache
 .terraform/
-.terraform.lock.hcl
+
+# State files (backed up to B2 via apply.sh)
 terraform.tfstate
 terraform.tfstate.*
+
+# Plan files
 *.tfplan
+
+# Private keys
 *.pem
 *.key
+
+# Crash logs
 crash.log
+
+# Override files
 override.tf
 override.tf.json
 *_override.tf

@@ -12,7 +12,7 @@ This folder contains everything you need to understand, set up, and operate the 
 |--------|--------------|----------------|
 | **00-getting-started** | First time setup | Prerequisites, quick start, how docs work |
 | **01-architecture** | Planning/understanding | Why we made certain decisions, cost analysis |
-| **02-setup** | Deploying infrastructure | Terraform, system configuration |
+| **02-setup** | Deploying infrastructure | OpenTofu, B2, DNS, SSL configuration |
 | **03-operations** | Day-to-day use | Starting services, backups, troubleshooting |
 | **04-services** | Using specific services | Service-specific features and config |
 | **05-development** | Contributing/evolving | Design decisions, future plans |
@@ -46,8 +46,6 @@ This folder contains everything you need to understand, set up, and operate the 
 |------|---------|
 | [dns-configuration.md](../02-setup/dns-configuration.md) | DNS setup (Cloudflare recommended) |
 | [cloudflare-origin-cert.md](../02-setup/cloudflare-origin-cert.md) | SSL certificates via Cloudflare |
-| [b2-bucket-structure.md](../02-setup/b2-bucket-structure.md) | Single B2 bucket organization |
-| [opentofu-ip-behavior.md](../02-setup/opentofu-ip-behavior.md) | Reserved IP behavior & recovery |
 | [b2-bucket-structure.md](../02-setup/b2-bucket-structure.md) | Single B2 bucket organization |
 | [opentofu-ip-behavior.md](../02-setup/opentofu-ip-behavior.md) | Reserved IP behavior & recovery |
 
@@ -106,4 +104,4 @@ Found something wrong or want to add something?
 
 ---
 
-*Last updated: 2024*
+*Last updated: March 2026*

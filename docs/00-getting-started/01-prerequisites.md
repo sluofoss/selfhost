@@ -10,6 +10,9 @@
 1. Sign up at [cloud.oracle.com](https://cloud.oracle.com)
 2. Verify identity (credit card required, not charged)
 3. Navigate to Compute → Instances
+4. Generate an OCI API key (Profile → API Keys → Add API Key)
+5. Save the generated key file to `~/.oci/oci_api_key.pem`
+6. Note down your tenancy OCID, user OCID, fingerprint, and region
 
 **What you get**:
 - 4 OCPUs (ARM)
@@ -32,8 +35,6 @@
 
 **Note**: The infrastructure uses a **reserved public IP** that persists across server reboots. You only need to configure DNS once!
 
-**Note**: The infrastructure uses a **reserved public IP** that persists across server reboots. You only need to configure DNS once!
-
 **Alternative**: Any DNS provider (Namecheap, etc.) + Let's Encrypt
 
 **Why Cloudflare is recommended**:
@@ -46,17 +47,21 @@
 
 ### 3. Backblaze B2
 
-**Why**: Cheap, durable storage for photos ($6/TB/month)
+**Why**: Cheap, durable storage for photos ($6/TB/month). All original photos are stored in B2 — we stay within OCI's free tier by keeping only thumbnails and caches locally.
 
 **Setup**:
 1. Sign up at [backblaze.com/b2](https://backblaze.com/b2)
-2. Create bucket named `immich-photos`
+2. Create a **single bucket** for all data (photos, backups, terraform state)
+   - Enable **encryption**
+   - Set lifecycle to **Keep all versions**
 3. Generate Application Key:
    - Go to App Keys → Create Application Key
-   - Name: `immich-server`
+   - Name: `selfhost-server`
    - Access: Read/Write
-   - Bucket: `immich-photos`
+   - Bucket: your bucket
    - Save Key ID and Application Key securely
+
+See [B2 Bucket Structure](../02-setup/b2-bucket-structure.md) for how data is organized within the bucket.
 
 ## Required Tools
 
@@ -66,14 +71,20 @@
 # SSH client (usually pre-installed)
 ssh -V
 
-# Optional but recommended:
+# SSH key pair (if you don't have one)
+ssh-keygen -t ed25519 -C "your-email@example.com"
+
+# OpenTofu (infrastructure provisioning)
+# Install from https://opentofu.org/docs/intro/install/
+
+# Optional:
 # - Git (for cloning repo)
-# - Terraform/OpenTofu (for infrastructure)
+# - rclone (for managing B2 backups locally)
 ```
 
 ### Will Be Installed on Server
 
-The setup script installs:
+The cloud-init script and setup process installs:
 - Docker CE
 - Docker Compose plugin
 - rclone (for B2)
@@ -95,21 +106,22 @@ The setup script installs:
 ## Pre-Setup Checklist
 
 - [ ] OCI account created and verified
-- [ ] SSH key pair generated
+- [ ] OCI API key generated and saved to `~/.oci/oci_api_key.pem`
+- [ ] SSH key pair generated (`ssh-keygen -t ed25519`)
 - [ ] Domain purchased/configured
 - [ ] B2 account created
-- [ ] B2 bucket created
+- [ ] B2 bucket created (single bucket, encryption on, keep all versions)
 - [ ] B2 application key generated
-- [ ] 30 minutes uninterrupted time
+- [ ] OpenTofu installed locally
+- [ ] ~30 minutes uninterrupted time
 
 ## Time Estimates
 
 | Task | Time |
 |------|------|
-| OCI setup | 10 min |
+| OCI setup + API key | 10 min |
 | Domain/DNS | 5 min |
 | B2 setup | 5 min |
 | Infrastructure deploy | 5 min |
 | Server setup | 15 min |
 | **Total** | **~40 min** |
-

@@ -4,17 +4,18 @@
 
 ```bash
 # Start all services
+cd ~/selfhost/server
 ./start.sh
 
-# Check status
-docker compose ps
-docker compose logs
+# Check status (from each service directory)
+cd traefik && docker compose ps
+cd immich && docker compose ps
 
-# Stop everything
-docker compose down
+# Stop a stack
+cd traefik && docker compose down
 
 # Update images
-docker compose pull && docker compose up -d
+cd immich && docker compose pull && docker compose up -d
 ```
 
 ## Starting Services
@@ -26,7 +27,7 @@ The `start.sh` script handles startup order:
 3. **Immich** - Application layer
 
 ```bash
-cd /path/to/selfhost/server
+cd ~/selfhost/server
 ./start.sh
 ```
 
@@ -45,7 +46,7 @@ cd immich && docker compose ps
 ### View Logs
 
 ```bash
-# All logs
+# All logs for a stack
 docker compose logs
 
 # Specific service
@@ -66,9 +67,10 @@ cd traefik && docker compose down
 cd immich && docker compose down
 
 # Stop everything
+cd ~/selfhost/server
 cd traefik && docker compose down
-cd immich && docker compose down
-cd monitoring && docker compose down
+cd ../immich && docker compose down
+cd ../monitoring && docker compose down
 ```
 
 ## Updating Services
@@ -116,6 +118,9 @@ docker exec immich_server ls -la /usr/src/app/upload
 # Container disk usage
 docker system df
 
+# Block volume usage
+df -h /data
+
 # Clean up unused images
 docker image prune
 
@@ -142,7 +147,7 @@ htop
 curl http://localhost:8080/ping
 
 # Immich health
-curl http://localhost:2283/api/server-info/ping
+curl http://localhost:2283/api/server/ping
 ```
 
 ### Check Backups
@@ -153,7 +158,7 @@ tail -f /var/log/postgres-backup.log
 tail -f /var/log/config-backup.log
 
 # Check B2 sync status
-rclone ls backblaze:backups
+rclone ls backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/
 ```
 
 ## Maintenance Tasks
@@ -175,9 +180,10 @@ ls -la /data/backups/
 
 ```bash
 # Update all images
+cd ~/selfhost/server
 cd traefik && docker compose pull && docker compose up -d
-cd immich && docker compose pull && docker compose up -d
-cd monitoring && docker compose pull && docker compose up -d
+cd ../immich && docker compose pull && docker compose up -d
+cd ../monitoring && docker compose pull && docker compose up -d
 
 # Review security updates
 sudo apt update && sudo apt list --upgradable
@@ -227,4 +233,3 @@ docker network create proxy
 # Check firewall
 sudo ufw status
 ```
-

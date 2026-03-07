@@ -11,21 +11,14 @@ DNS management for this infrastructure is handled **outside** of Oracle Cloud In
 
 This means you only need to configure DNS once, and the IP will never change!
 
-**Important**: The infrastructure provisions a **reserved public IP** that persists across:
-- Server reboots
-- Instance stop/start cycles  
-- Infrastructure recreation (if using same OpenTofu state)
-
-This means you only need to configure DNS once, and the IP will never change!
-
 ## Why Cloudflare?
 
 **Benefits of using Cloudflare DNS**:
-- ✅ **Free** - No cost for DNS management
-- ✅ **Fast** - Global anycast network (faster than OCI DNS)
-- ✅ **Secure** - Built-in DDoS protection
-- ✅ **Simple SSL** - Origin Certificates (15-year validity, no automation needed)
-- ✅ **Flexible** - Easy to change server IPs without touching OCI
+- **Free** - No cost for DNS management
+- **Fast** - Global anycast network (faster than OCI DNS)
+- **Secure** - Built-in DDoS protection
+- **Simple SSL** - Origin Certificates (15-year validity, no automation needed)
+- **Flexible** - Easy to change server IPs without touching OCI
 
 **Alternative**: You can use any DNS provider (Namecheap, Route53, etc.) but you'll need to:
 - Set up Let's Encrypt separately
@@ -180,7 +173,7 @@ If you need to migrate to a new OCI instance:
 1. **Keep same domain** - Just update DNS records
 2. **Restore certificates** - From B2 backup:
    ```bash
-   rclone copy backblaze:${B2_BACKUP_BUCKET:-backups}/certs/ ./traefik/certs/
+   rclone copy backblaze:${B2_BUCKET_NAME}/certs/ ./traefik/certs/
    ```
 3. **Update DNS** - Change A records to new IP
 4. **Wait 2-5 minutes** - DNS propagation

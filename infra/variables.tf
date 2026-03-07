@@ -28,15 +28,22 @@ variable "compartment_ocid" {
   type        = string
 }
 
-variable "ssh_public_key" {
-  description = "SSH public key for instance access"
+variable "ssh_public_key_path" {
+  description = "Path to SSH public key file for instance access"
   type        = string
+  default     = "~/.ssh/id_ed25519.pub"
+}
+
+variable "repo_url" {
+  description = "Git repository URL to clone on the server"
+  type        = string
+  default     = "https://github.com/sluofoss/selfhost.git"
 }
 
 variable "instance_name" {
   description = "Name of the compute instance"
   type        = string
-  default     = "immich-server"
+  default     = "selfhost-server"
 }
 
 variable "vcn_cidr" {
@@ -70,7 +77,7 @@ variable "boot_volume_size_in_gbs" {
 }
 
 variable "thumbnail_volume_size_in_gbs" {
-  description = "Block volume size for thumbnails (GB) - adjust based on photo count"
+  description = "Block volume size for data (thumbnails, DB, caches) in GB"
   type        = number
   default     = 200
 }

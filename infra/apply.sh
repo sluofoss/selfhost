@@ -29,7 +29,12 @@ fi
 
 # Load B2 configuration
 if [ -f "$SERVER_DIR/.env" ]; then
-    source "$SERVER_DIR/.env"
+    set -a; source "$SERVER_DIR/.env"; set +a
+fi
+
+# Configure rclone via env vars (no rclone.conf needed)
+if [ -f "$SERVER_DIR/scripts/lib/rclone-env.sh" ]; then
+    source "$SERVER_DIR/scripts/lib/rclone-env.sh"
 fi
 
 # Check B2 credentials
@@ -42,7 +47,7 @@ fi
 # Check rclone
 if ! command -v rclone &> /dev/null; then
     echo -e "${RED}Error:${NC} rclone not installed"
-    echo "Please run ./server/scripts/setup/install.sh first"
+    echo "Install rclone: https://rclone.org/install/"
     exit 1
 fi
 
@@ -81,7 +86,7 @@ if tofu apply "$@"; then
     echo "======================================"
     
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    B2_BUCKET="${B2_BUCKET_NAME:-sluo-personal-b2}"
+    B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"
     
     # Create temp directory for backup
     TEMP_DIR=$(mktemp -d)

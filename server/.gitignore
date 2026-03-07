@@ -1,7 +1,22 @@
+# Environment files (contain secrets)
 .env
+**/.env
 .env.local
 .env.*.local
+
+# SSL certificates and private keys
+**/certs/
+*.pem
+*.key
+
+# Cloudflare API token
+.cloudflare-token
+scripts/setup/.cloudflare-token
+
+# Logs
 *.log
+
+# Editor swap files
 *.swp
 *.swo
 *~

@@ -6,10 +6,18 @@
 
 set -e
 
+# Load environment variables
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [ -f "$SERVER_DIR/.env" ]; then
+    set -a; source "$SERVER_DIR/.env"; set +a
+fi
+source "$SCRIPT_DIR/../lib/rclone-env.sh"
+
 # Configuration
 BACKUP_DIR="/data/backups/postgres"
-B2_BUCKET="${B2_BUCKET_NAME:-sluo-personal-b2}"
-B2_PATH="${B2_BACKUPS_PATH:-backups/postgres}"
+B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"
+B2_PATH="${B2_BACKUPS_PATH:-backups}/postgres"
 RETENTION_DAYS=7
 DATE=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="/var/log/postgres-backup.log"
@@ -24,32 +32,43 @@ log() {
 
 log "Starting PostgreSQL backup..."
 
+# Check if PostgreSQL is running
+if ! docker exec immich_postgres pg_isready -U postgres > /dev/null 2>&1; then
+    log "✗ PostgreSQL not running, skipping backup"
+    exit 1
+fi
+
+# Databases to back up (add more as services are deployed)
+DATABASES=(immich)
+
 # Create backup for each database
-for db in immich nextcloud; do
-    if docker exec postgres pg_isready -U postgres > /dev/null 2>&1; then
-        BACKUP_FILE="${BACKUP_DIR}/${db}_${DATE}.sql.gz"
+for db in "${DATABASES[@]}"; do
+    # Check if database exists before backing up
+    if ! docker exec immich_postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "$db"; then
+        log "⚠ Database '$db' does not exist, skipping"
+        continue
+    fi
+
+    BACKUP_FILE="${BACKUP_DIR}/${db}_${DATE}.sql.gz"
+    
+    log "Backing up database: $db"
+    
+    # Create backup
+    docker exec immich_postgres pg_dump -U postgres "$db" | gzip > "$BACKUP_FILE"
+    
+    # Verify backup
+    if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
+        SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+        log "✓ Backup created: $BACKUP_FILE ($SIZE)"
         
-        log "Backing up database: $db"
-        
-        # Create backup
-        docker exec postgres pg_dump -U postgres "$db" | gzip > "$BACKUP_FILE"
-        
-        # Verify backup
-        if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
-            SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
-            log "✓ Backup created: $BACKUP_FILE ($SIZE)"
-            
-            # Sync to B2
-            if command -v rclone &> /dev/null; then
-                log "Syncing to B2..."
-                rclone copy "$BACKUP_FILE" "backblaze:${B2_BUCKET}/${B2_PATH}/"
-                log "✓ Synced to B2"
-            fi
-        else
-            log "✗ Backup failed for database: $db"
+        # Sync to B2
+        if command -v rclone &> /dev/null; then
+            log "Syncing to B2..."
+            rclone copy "$BACKUP_FILE" "backblaze:${B2_BUCKET}/${B2_PATH}/"
+            log "✓ Synced to B2"
         fi
     else
-        log "✗ PostgreSQL not running, skipping backup"
+        log "✗ Backup failed for database: $db"
     fi
 done
 

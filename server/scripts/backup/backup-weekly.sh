@@ -6,9 +6,17 @@
 
 set -e
 
+# Load environment variables
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [ -f "$SERVER_DIR/.env" ]; then
+    set -a; source "$SERVER_DIR/.env"; set +a
+fi
+source "$SCRIPT_DIR/../lib/rclone-env.sh"
+
 # Configuration
 BACKUP_ROOT="/data/backups/weekly"
-B2_BUCKET="${B2_BUCKET_NAME:-sluo-personal-b2}"
+B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"
 RETENTION_WEEKS=4
 DATE=$(date +%Y%m%d)
 LOG_FILE="/var/log/weekly-backup.log"
@@ -51,12 +59,12 @@ done
 # Sync to B2
 if command -v rclone &> /dev/null; then
     log "Syncing weekly backup to B2..."
-    rclone sync "$WEEKLY_DIR" "backblaze:${B2_BUCKET}/backups/weekly/${DATE}/"
+    rclone sync "$WEEKLY_DIR" "backblaze:${B2_BUCKET}/${B2_BACKUPS_PATH:-backups}/weekly/${DATE}/"
     log "✓ Weekly backup synced to B2"
     
     # Cleanup old weekly backups from B2
     log "Cleaning up old weekly backups..."
-    rclone delete --min-age ${RETENTION_WEEKS}w "backblaze:${B2_BUCKET}/backups/weekly/"
+    rclone delete --min-age ${RETENTION_WEEKS}w "backblaze:${B2_BUCKET}/${B2_BACKUPS_PATH:-backups}/weekly/"
 fi
 
 # Cleanup local backups

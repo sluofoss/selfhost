@@ -14,8 +14,10 @@ services:
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
     # user: 1000:1000 # Uncomment to run as non-root user
     volumes:
-      # Do not edit the next line. If you want to change the media storage location on your system, edit the value of UPLOAD_LOCATION in the .env file
+      # Upload location points to B2 rclone FUSE mount (originals stored in B2)
       - ${UPLOAD_LOCATION}:/usr/src/app/upload
+      # Thumbnails stored locally on block volume for fast access
+      - ${THUMBS_LOCATION:-/data/immich/thumbnails}:/usr/src/app/upload/thumbs
       - /etc/localtime:/etc/localtime:ro
     env_file:
       - .env

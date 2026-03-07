@@ -5,10 +5,10 @@ This guide walks you through setting up Cloudflare Origin Certificates for SSL t
 ## Why Origin Certificates?
 
 **Benefits**:
-- ✅ **15-year validity** - No renewal automation needed
-- ✅ **Free** - Included with Cloudflare
-- ✅ **Secure** - 2048-bit RSA encryption
-- ✅ **Works through Cloudflare** - End-to-end encryption
+- **15-year validity** - No renewal automation needed
+- **Free** - Included with Cloudflare
+- **Secure** - 2048-bit RSA encryption
+- **Works through Cloudflare** - End-to-end encryption
 
 **Trade-off**: Certificate is only trusted by Cloudflare (users must access through Cloudflare, not directly to IP).
 
@@ -95,8 +95,8 @@ chmod 644 traefik/certs/origin-cert.pem
 #### Step 4: Backup to B2
 
 ```bash
-# Backup certificates
-rclone copy traefik/certs/ backblaze:${B2_BACKUP_BUCKET:-backups}/certs/
+# Backup certificates (uses B2_BUCKET_NAME from server/.env)
+rclone copy traefik/certs/ backblaze:${B2_BUCKET_NAME}/certs/
 ```
 
 #### Step 5: Update Traefik
@@ -151,7 +151,7 @@ echo | openssl s_client -servername photos.yourdomain.com -connect photos.yourdo
 
 ```bash
 # Restore from B2 backup
-rclone copy backblaze:${B2_BACKUP_BUCKET:-backups}/certs/ ./traefik/certs/
+rclone copy backblaze:${B2_BUCKET_NAME}/certs/ ./traefik/certs/
 
 # Restart Traefik
 cd traefik && docker compose restart
@@ -188,7 +188,7 @@ Or just run the setup script again - it will automatically restore from B2!
 
 2. Test B2 connection:
    ```bash
-   rclone ls backblaze:${B2_BACKUP_BUCKET:-backups}/
+   rclone ls backblaze:${B2_BUCKET_NAME}/
    ```
 
 ### API Token Issues
@@ -201,9 +201,6 @@ Or just run the setup script again - it will automatically restore from B2!
 
 After setting up Origin Certificates:
 
-1. [Configure DNS](../02-setup/dns-configuration.md) (if not done)
+1. [Configure DNS](dns-configuration.md) (if not done)
 2. [Start services](../03-operations/daily-operations.md)
-3. [Set up monitoring](../03-operations/monitoring.md)
-
-EOF
-echo "Created Cloudflare Origin Certificate documentation"
+3. [Set up backups](../03-operations/backup-restore.md)

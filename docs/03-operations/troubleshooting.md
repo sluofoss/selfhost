@@ -4,13 +4,18 @@
 
 ```bash
 # Check everything is running
-docker compose ps
+cd ~/selfhost/server/traefik && docker compose ps
+cd ~/selfhost/server/immich && docker compose ps
 
 # Check recent errors
 docker compose logs --tail 50 | grep -i error
 
 # Check system resources
 free -h && df -h
+
+# Check cloud-init status (first boot only)
+cloud-init status
+sudo cat /var/log/cloud-init-output.log
 ```
 
 ## Common Issues
@@ -106,18 +111,15 @@ mountpoint -q /data/immich/b2-mount && echo "Mounted" || echo "Not mounted"
 sudo systemctl status rclone-b2-mount
 
 # Test rclone directly
-rclone ls backblaze:immich-photos
+rclone ls backblaze:${B2_BUCKET_NAME}/${B2_PHOTOS_PATH:-photos}/
 ```
 
 **Solutions**:
 
 1. **Rclone not configured**
    ```bash
-   # Check credentials
-   cat ~/.config/rclone/rclone.conf
-   
-   # Test connection
-   rclone ls backblaze:immich-photos
+   # Test connection (uses env vars, not rclone.conf)
+   rclone ls backblaze:${B2_BUCKET_NAME}/
    ```
 
 2. **Mount service not running**
@@ -165,6 +167,9 @@ df -h /data/immich/thumbnails
    ```bash
    # Check postgres logs
    docker compose logs database
+   
+   # Check postgres is healthy
+   docker exec immich_postgres pg_isready -U postgres
    
    # Restart database
    docker compose restart database
@@ -215,8 +220,8 @@ curl http://localhost:2283  # Immich
 # Check backup logs
 tail -f /var/log/postgres-backup.log
 
-# Test rclone
-rclone ls backblaze:backups
+# Test rclone B2 connection
+rclone ls backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/
 
 # Check cron jobs
 crontab -l
@@ -229,15 +234,17 @@ crontab -l
    # Check cron service
    sudo systemctl status cron
    
-   # Reinstall cron jobs
+   # Re-run install.sh to reinstall cron jobs
    ./scripts/setup/install.sh
    ```
 
-2. **Rclone credentials expired**
+2. **B2 credentials invalid**
    ```bash
-   # Test and reconfigure
-   rclone ls backblaze:backups
-   rclone config
+   # Verify .env has correct B2 credentials
+   cat .env | grep B2_
+   
+   # Test connection
+   rclone ls backblaze:${B2_BUCKET_NAME}/
    ```
 
 3. **Backup script errors**
@@ -246,11 +253,42 @@ crontab -l
    ./scripts/backup/backup-postgres.sh
    ```
 
+### Block Volume Issues
+
+**Symptom**: `/data` directory missing or not writable
+
+**Check**:
+```bash
+# Check mount
+df -h /data
+lsblk
+
+# Check fstab
+cat /etc/fstab | grep data
+```
+
+**Solutions**:
+
+1. **Volume not mounted**
+   ```bash
+   sudo mount -a
+   ```
+
+2. **Volume not formatted** (fresh instance)
+   ```bash
+   # Cloud-init should handle this, but if it didn't:
+   # Find the device (usually /dev/sdb)
+   lsblk
+   sudo mkfs.ext4 /dev/sdb
+   sudo mount /dev/sdb /data
+   ```
+
 ## Getting Help
 
 1. **Check logs first**: `docker compose logs`
-2. **Search issues**: Check GitHub issues for similar problems
-3. **System info**: Include output of `docker compose ps` and `docker compose logs` when asking for help
+2. **Check cloud-init logs**: `sudo cat /var/log/cloud-init-output.log`
+3. **Search issues**: Check GitHub issues for similar problems
+4. **System info**: Include output of `docker compose ps` and `docker compose logs` when asking for help
 
 ## Debug Mode
 
@@ -266,4 +304,3 @@ docker compose up -d
 # Immich debug
 # Check Immich docs for debug environment variables
 ```
-

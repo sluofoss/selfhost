@@ -19,7 +19,7 @@ usage() {
     echo "Usage: $0 <database_name> [backup_file]"
     echo ""
     echo "Arguments:"
-    echo "  database_name    Name of the database to restore (immich, nextcloud)"
+    echo "  database_name    Name of the database to restore (e.g., immich)"
     echo "  backup_file      Specific backup file to restore (optional)"
     echo ""
     echo "Available backups:"
@@ -65,26 +65,24 @@ if [ "$confirm" != "yes" ]; then
 fi
 
 # Check if PostgreSQL is running
-if ! docker exec postgres pg_isready -U postgres > /dev/null 2>&1; then
+if ! docker exec immich_postgres pg_isready -U postgres > /dev/null 2>&1; then
     log "✗ PostgreSQL is not running"
     exit 1
 fi
 
 log "Stopping dependent services..."
-docker stop immich-server immich-microservices 2>/dev/null || true
-docker stop nextcloud 2>/dev/null || true
+docker stop immich_server immich_machine_learning 2>/dev/null || true
 
 log "Dropping existing database..."
-docker exec postgres dropdb -U postgres --if-exists "$DB_NAME"
+docker exec immich_postgres dropdb -U postgres --if-exists "$DB_NAME"
 
 log "Creating new database..."
-docker exec postgres createdb -U postgres "$DB_NAME"
+docker exec immich_postgres createdb -U postgres "$DB_NAME"
 
 log "Restoring from backup..."
-gunzip < "$BACKUP_FILE" | docker exec -i postgres psql -U postgres "$DB_NAME"
+gunzip < "$BACKUP_FILE" | docker exec -i immich_postgres psql -U postgres "$DB_NAME"
 
 log "Starting dependent services..."
-docker start immich-server immich-microservices 2>/dev/null || true
-docker start nextcloud 2>/dev/null || true
+docker start immich_server immich_machine_learning 2>/dev/null || true
 
 log "✓ Database restore completed successfully"

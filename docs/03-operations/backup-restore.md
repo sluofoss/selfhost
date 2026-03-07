@@ -6,7 +6,11 @@
 |-----------|-----------|-------------|-----------|
 | PostgreSQL databases | Daily at 2 AM | Local + B2 | 7 days local, 30 days B2 |
 | Configuration files | Hourly (on change) | B2 only | 24 hours |
-| Full volume snapshots | Weekly (Sunday 3 AM) | B2 only | 4 weeks |
+| Full volume snapshots | Weekly (Sunday 3 AM) | Local + B2 | 4 weeks |
+| Terraform state | On every `apply.sh` run | B2 | 90 days |
+| SSL certificates | On creation | B2 | Forever |
+
+**Note**: Original photos are stored directly in B2 via the rclone FUSE mount, so they don't need separate backup — B2 *is* the primary storage.
 
 ## Automated Backups
 
@@ -23,9 +27,12 @@ Backups run automatically via cron. No manual intervention needed.
 - Environment files (.env)
 - Configuration changes
 
+**Note on .env backups**: The hourly config backup includes `.env` files (which contain secrets like B2 keys and database passwords). These are stored in your B2 bucket which has encryption enabled. This is an acceptable trade-off for personal use — it means you can fully restore your setup from B2 alone.
+
 **Weekly**:
 - Full thumbnails volume
-- Complete system state
+- Database dump archive
+- Docker volumes
 
 ## Manual Backup Operations
 
@@ -33,7 +40,7 @@ Backups run automatically via cron. No manual intervention needed.
 
 ```bash
 # Backup all databases
-cd server
+cd ~/selfhost/server
 ./scripts/backup/backup-postgres.sh
 
 # Output: /data/backups/postgres/immich_YYYYMMDD_HHMMSS.sql.gz
@@ -62,7 +69,7 @@ cd server
 ls -la /data/backups/postgres/
 
 # Restore specific database
-./scripts/backup/restore-postgres.sh immich /data/backups/postgres/immich_20240307_020000.sql.gz
+./scripts/backup/restore-postgres.sh immich /data/backups/postgres/immich_20260307_020000.sql.gz
 
 # Or restore latest
 ./scripts/backup/restore-postgres.sh immich
@@ -74,7 +81,7 @@ ls -la /data/backups/postgres/
 
 ```bash
 # Download from B2
-rclone copy backblaze:backups/configs/latest/ ./restore/
+rclone copy backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/configs/latest/ ./restore/
 
 # Copy files back
 cp ./restore/* ./
@@ -86,17 +93,27 @@ cp ./restore/* ./
 
 ```bash
 # 1. Provision new server (use infra/)
-# 2. Run setup
+cd infra && ./apply.sh
+
+# 2. Wait for cloud-init to finish, then SSH in
+ssh -i ~/.ssh/id_ed25519 ubuntu@<your-server-ip>
+
+# 3. Configure .env files
+cd ~/selfhost/server
+cp .env.example .env
+# Edit .env with your B2 credentials, domain, etc.
+
+# 4. Run post-config setup
 ./scripts/setup/install.sh
 
-# 3. Restore databases
-rclone copy backblaze:backups/postgres/latest/ /data/backups/postgres/
+# 5. Restore databases from B2
+rclone copy backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/postgres/ /data/backups/postgres/
 ./scripts/backup/restore-postgres.sh immich
 
-# 4. Restore configs
-rclone copy backblaze:backups/configs/latest/ ./
+# 6. Restore SSL certificates (if using Cloudflare Origin Certs)
+rclone copy backblaze:${B2_BUCKET_NAME}/certs/ ./traefik/certs/
 
-# 5. Start services
+# 7. Start services
 ./start.sh
 ```
 
@@ -110,7 +127,7 @@ tail -20 /var/log/postgres-backup.log
 tail -20 /var/log/config-backup.log
 
 # List B2 backups
-rclone ls backblaze:backups/
+rclone ls backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/
 ```
 
 ### Verify Backups
@@ -134,9 +151,10 @@ Location: `/data/backups/`
 
 ### Backblaze B2
 
-Location: `backups/` bucket
-- Offsite durability
+Location: `<your-bucket>/${B2_BACKUPS_PATH:-backups}/`
+- Offsite durability (11 nines)
 - 30+ day retention
+- Encrypted with keep-all-versions lifecycle
 - Primary restore source for disasters
 
 ### Cleanup
@@ -144,4 +162,3 @@ Location: `backups/` bucket
 Old backups are automatically cleaned up:
 - Local: Deleted after 7 days
 - B2: Deleted after 30 days (configurable)
-

@@ -6,13 +6,21 @@
 
 set -e
 
+# Load environment variables
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [ -f "$SERVER_DIR/.env" ]; then
+    set -a; source "$SERVER_DIR/.env"; set +a
+fi
+source "$SCRIPT_DIR/../lib/rclone-env.sh"
+
 # Configuration
 CONFIG_DIRS=(
-    "/home/ubuntu/selfhost/server"
+    "$SERVER_DIR"
     "/data/immich"
 )
-B2_BUCKET="${B2_BUCKET_NAME:-sluo-personal-b2}"
-B2_PATH="${B2_BACKUPS_PATH:-backups/configs}"
+B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"
+B2_PATH="${B2_BACKUPS_PATH:-backups}/configs"
 LOG_FILE="/var/log/config-backup.log"
 LAST_BACKUP_FILE="/tmp/last-config-backup"
 
