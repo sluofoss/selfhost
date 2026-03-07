@@ -25,8 +25,8 @@ This folder contains everything you need to understand, set up, and operate the 
 
 | File | Purpose |
 |------|---------|
-| [00-index.md](./00-index.md) | TL;DR quick start |
-| [01-prerequisites.md](./01-prerequisites.md) | Accounts and tools needed |
+| [00-index.md](./00-index.md) | Overview and quick start |
+| [01-prerequisites.md](./01-prerequisites.md) | Complete step-by-step setup guide |
 
 ### 01-architecture/
 

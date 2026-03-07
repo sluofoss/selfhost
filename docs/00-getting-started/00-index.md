@@ -1,10 +1,10 @@
 # Getting Started
 
-Welcome! This guide will take you from zero to a running self-hosted infrastructure in about 30 minutes.
+Welcome! This guide will take you from zero to a running self-hosted infrastructure in about 40 minutes.
 
 ## What You'll Get
 
-After completing this guide, you'll have:
+After completing the setup, you'll have:
 
 - **Immich** - Photo management (like Google Photos, but private)
 - **SSL certificates** - Automatic HTTPS via Cloudflare Origin Certs or Let's Encrypt
@@ -12,171 +12,62 @@ After completing this guide, you'll have:
 - **Backups** - Automated to Backblaze B2
 - **$0 hosting** - On Oracle Cloud Free Tier
 
-## Prerequisites Checklist
+## Setup Guide
 
-Before starting, ensure you have:
+**Follow the [Complete Setup Guide](01-prerequisites.md)** — it walks you through every step in order:
 
-- [ ] Oracle Cloud account (Free Tier eligible) with API key generated
-- [ ] Domain name (or subdomain you control)
-- [ ] Backblaze B2 account with bucket created
-- [ ] SSH key pair generated
-- [ ] OpenTofu installed locally
-- [ ] ~30 minutes of uninterrupted time
+1. Install local tools (SSH key, OpenTofu)
+2. Create Backblaze B2 account and bucket
+3. Create Oracle Cloud account and API key
+4. Provision infrastructure with OpenTofu
+5. Configure environment files on the server
+6. Set up domain and DNS with Cloudflare
+7. Generate SSL certificates
+8. Verify everything works
 
-> **Don't have these yet?** See [Prerequisites](01-prerequisites.md) for detailed setup instructions.
-
-## Quick Start (If You're Impatient)
-
-```bash
-# 1. Provision infrastructure (creates server + runs cloud-init)
-cd infra && tofu init && tofu apply
-
-# 2. Wait ~5 min for cloud-init to finish, then SSH to server
-ssh -i ~/.ssh/id_ed25519 ubuntu@<your-server-ip>
-
-# 3. Configure environment files
-cd ~/selfhost/server
-cp .env.example .env
-cp traefik/.env.example traefik/.env
-cp immich/.env.example immich/.env
-cp monitoring/.env.example monitoring/.env
-# Edit all .env files with your values...
-
-# 4. Run post-config setup (B2 mount, cron jobs, Docker image pull)
-./scripts/setup/install.sh
-
-# 5. Start
-./start.sh
-```
-
-## Step-by-Step Guide
-
-### Step 1: Infrastructure (5 min)
-
-Deploy the Oracle Cloud infrastructure:
+## Quick Start (If You've Done This Before)
 
 ```bash
+# 1. Provision infrastructure
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your OCI credentials and SSH key path
-tofu init
-./apply.sh
-```
+# Edit terraform.tfvars with your OCI credentials
+tofu init && ./apply.sh
 
-This creates:
-- ARM instance (4 OCPUs, 24GB RAM) with cloud-init provisioning
-- 200GB block volume (formatted and mounted at `/data`)
-- VCN with firewall rules
-- Reserved public IP
-
-The `apply.sh` wrapper also backs up your Terraform state to B2 automatically.
-
-Cloud-init will automatically:
-- Install Docker, rclone, and dependencies
-- Clone this repo to `/home/ubuntu/selfhost`
-- Create the `/data` directory structure
-- Format and mount the block volume
-- Configure the UFW firewall
-
-### Step 2: Configure Environment (5 min)
-
-SSH into your server and set up your environment files:
-
-```bash
+# 2. Wait ~5 min for cloud-init, then SSH in
 ssh -i ~/.ssh/id_ed25519 ubuntu@<your-server-ip>
 
-# Check cloud-init finished (should say "done")
-cloud-init status
-
+# 3. Configure all .env files
 cd ~/selfhost/server
+nano .env              # B2 credentials, domain
+nano traefik/.env      # ACME email, dashboard password
+nano immich/.env       # DB password, domain
+nano monitoring/.env   # Grafana credentials
 
-# Global config (B2 credentials, domain)
-cp .env.example .env
-
-# Traefik config (SSL, domain)
-cp traefik/.env.example traefik/.env
-
-# Immich config (photos, database)
-cp immich/.env.example immich/.env
-
-# Monitoring config (Grafana credentials)
-cp monitoring/.env.example monitoring/.env
-
-# Edit each file with nano/vim
-nano .env
-nano traefik/.env
-nano immich/.env
-nano monitoring/.env
-```
-
-### Step 3: Post-Config Setup (5 min)
-
-Run the setup script to configure B2 mount, backup cron jobs, and pull Docker images:
-
-```bash
+# 4. Run post-config setup
 ./scripts/setup/install.sh
-
-# Logout and back in for Docker permissions
-exit
+exit  # Log out and back in for Docker permissions
 ssh -i ~/.ssh/id_ed25519 ubuntu@<your-server-ip>
+
+# 5. Start B2 mount and services
+sudo systemctl start rclone-b2-mount
+cd ~/selfhost/server && ./start.sh
+
+# 6. Set up DNS (Cloudflare A records → server IP)
+# 7. Run SSL cert script
+./scripts/setup/cloudflare-origin-cert.sh
+cd traefik && docker compose restart
 ```
-
-### Step 4: Start Services (2 min)
-
-```bash
-cd ~/selfhost/server
-./start.sh
-```
-
-This will:
-1. Start Traefik (reverse proxy)
-2. Start Immich (photos)
-3. Optionally start monitoring
-
-### Step 5: Configure DNS & SSL (10 min)
-
-**Option A: Cloudflare (Recommended)**
-
-1. In Cloudflare dashboard, add A records:
-   ```
-   photos.yourdomain.com  A  <your-server-ip>
-   grafana.yourdomain.com A  <your-server-ip>
-   ```
-
-2. Set SSL/TLS mode to "Full (strict)"
-
-3. Create Origin Certificate:
-   ```bash
-   ./scripts/setup/cloudflare-origin-cert.sh
-   ```
-   This creates a 15-year certificate and backs it up to B2.
-
-**Option B: Other DNS Provider**
-
-1. Add A records at your DNS provider
-2. Traefik will automatically get Let's Encrypt certificates
-3. Ensure port 80 is open for ACME challenge
-
-Wait 2-5 minutes for DNS to propagate.
-
-For detailed instructions, see [Cloudflare Origin Certificate Setup](../02-setup/cloudflare-origin-cert.md)
-
-### Step 6: Verify
-
-Visit:
-- `https://photos.yourdomain.com` - Immich web UI
-- `https://traefik.yourdomain.com` - Traefik dashboard
-- `https://grafana.yourdomain.com` - Grafana (if enabled)
 
 ## Documentation Guide
 
 Not sure where to find something? See [Documentation Structure](02-docs-structure.md) for a complete guide to what's in each folder.
 
-## Next Steps
+## Next Steps After Setup
 
-- Learn about [daily operations](../03-operations/daily-operations.md)
-- Customize [backup settings](../03-operations/backup-restore.md)
-- Understand the [architecture](../01-architecture/overview.md)
+- [Daily operations](../03-operations/daily-operations.md) — starting, stopping, updating services
+- [Backup & restore](../03-operations/backup-restore.md) — how backups work, how to restore
+- [Architecture overview](../01-architecture/overview.md) — understand why things are designed this way
 
 ## Troubleshooting
 
