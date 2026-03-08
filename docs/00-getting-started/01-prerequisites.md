@@ -401,21 +401,17 @@ Replace `<your-server-ip>` with the IP from Step 4c.
 
 ## Step 7: SSL Certificates (5 min)
 
-### 7a. Create Cloudflare API Token
+### 7a. Get Cloudflare Global API Key
 
-You need this for the automated certificate script.
+You need this for the automated certificate script. Origin Certificates require Global API Key access.
 
 1. Go to [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens)
-2. Click **Create Token**
-3. Click **Get started** next to **Create Custom Token**
-4. Configure:
-   - **Token name**: `selfhost-origin-cert`
-   - **Permissions**:
-     - Zone → Zone → Read
-     - Zone → SSL and Certificates → Edit
-   - **Zone Resources**: Include → Specific zone → `yourdomain.com`
-5. Click **Continue to summary** → **Create Token**
-6. **Copy the token** (shown only once)
+2. Scroll down to **API Keys** section
+3. Click **View** next to **Global API Key**
+4. Enter your Cloudflare password to reveal the key
+5. **Copy the key** and **note your account email**
+
+**Security Note**: The Global API Key has full account access. The certificate script will store it securely with restricted file permissions and only use it for Origin Certificate operations.
 
 ### 7b. Run the Certificate Script
 

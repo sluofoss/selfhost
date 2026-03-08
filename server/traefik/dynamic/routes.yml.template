@@ -1,0 +1,38 @@
+http:
+  routers:
+    immich:
+      rule: "Host(`${IMMICH_DOMAIN}`)"
+      service: immich
+      entrypoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+    
+    traefik:
+      rule: "Host(`traefik.${DOMAIN}`)"
+      service: api@internal
+      entrypoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - auth@file
+    
+    grafana:
+      rule: "Host(`grafana.${DOMAIN}`)"
+      service: grafana
+      entrypoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    immich:
+      loadBalancer:
+        servers:
+          - url: "http://immich_server:2283"
+    
+    grafana:
+      loadBalancer:
+        servers:
+          - url: "http://grafana:3000"

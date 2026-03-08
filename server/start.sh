@@ -60,6 +60,45 @@ start_service() {
 # Check Docker is available
 check_docker
 
+# Function to generate Traefik routes from template
+generate_traefik_routes() {
+    local template_file="$SCRIPT_DIR/traefik/dynamic/routes.yml.template"
+    local output_file="$SCRIPT_DIR/traefik/dynamic/routes.yml"
+    
+    if [ ! -f "$template_file" ]; then
+        echo -e "${YELLOW}!${NC} Routes template not found, skipping route generation"
+        return 0
+    fi
+    
+    if [ ! -f "$SCRIPT_DIR/.env" ]; then
+        echo -e "${RED}Error:${NC} Server .env file not found"
+        exit 1
+    fi
+    
+    # Source .env files to get DOMAIN and IMMICH_DOMAIN
+    set -a
+    source "$SCRIPT_DIR/.env"
+    source "$SCRIPT_DIR/immich/.env"
+    set +a
+    
+    # Generate routes.yml using envsubst
+    if command -v envsubst &> /dev/null; then
+        envsubst < "$template_file" > "$output_file"
+        echo -e "${GREEN}✓${NC} Generated traefik/dynamic/routes.yml"
+    else
+        echo -e "${YELLOW}!${NC} envsubst not available, using sed as fallback"
+        sed \
+            -e "s|\${DOMAIN}|${DOMAIN}|g" \
+            -e "s|\${IMMICH_DOMAIN}|${IMMICH_DOMAIN}|g" \
+            "$template_file" > "$output_file"
+        echo -e "${GREEN}✓${NC} Generated traefik/dynamic/routes.yml (sed)"
+    fi
+}
+
+# Generate Traefik routes before starting
+echo "Generating Traefik routes..."
+generate_traefik_routes
+
 # Step 1: Start Traefik (infrastructure layer)
 echo "Step 1: Starting infrastructure (Traefik)..."
 start_service "Traefik (Proxy)" "traefik"

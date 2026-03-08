@@ -17,9 +17,7 @@ services:
     command:
       - --api.dashboard=true
       - --api.insecure=false
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --providers.docker.network=proxy
+      - --providers.file.directory=/dynamic
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
@@ -37,6 +35,7 @@ services:
       - ./letsencrypt:/letsencrypt
       - ./traefik.yml:/traefik.yml:ro
       - ./dynamic:/dynamic:ro
+      - ./certs:/certs:ro
     networks:
       - proxy
     healthcheck:

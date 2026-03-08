@@ -184,31 +184,31 @@ echo "Cloudflare API Token Setup"
 echo "======================================"
 echo ""
 
-if [ -f "$SCRIPT_DIR/.cloudflare-token" ]; then
-    echo -e "${GREEN}✓${NC} Found existing Cloudflare token"
-    CF_API_TOKEN=$(cat "$SCRIPT_DIR/.cloudflare-token")
+if [ -f "$SCRIPT_DIR/.cloudflare-credentials" ]; then
+    echo -e "${GREEN}✓${NC} Found existing Cloudflare credentials"
+    source "$SCRIPT_DIR/.cloudflare-credentials"
 else
-    echo -e "${YELLOW}!${NC} Cloudflare API token not found"
+    echo -e "${YELLOW}!${NC} Cloudflare credentials not found"
     echo ""
-    echo "To create one:"
+    echo "For Origin Certificates, you need an Origin CA Key:"
     echo "  1. Go to https://dash.cloudflare.com/profile/api-tokens"
-    echo "  2. Click 'Create Token'"
-    echo "  3. Use 'Custom token' with these permissions:"
-    echo "     - Zone:Read (for listing zones)"
-    echo "     - SSL:Edit (for creating certificates)"
-    echo "  4. Zone Resources: Include - Specific zone - yourdomain.com"
+    echo "  2. Scroll to 'API Keys' section"
+    echo "  3. Click 'View' next to 'Origin CA Key'"
+    echo "  4. Copy the key (starts with v1.0-)"
     echo ""
-    read -p "Enter your Cloudflare API Token: " CF_API_TOKEN
+    read -p "Enter your Origin CA Key: " CF_ORIGIN_CA_KEY
     
-    if [ -z "$CF_API_TOKEN" ]; then
-        echo -e "${RED}Error:${NC} No token provided"
+    if [ -z "$CF_ORIGIN_CA_KEY" ]; then
+        echo -e "${RED}Error:${NC} Origin CA Key required"
         exit 1
     fi
     
-    # Save token for future use
-    echo "$CF_API_TOKEN" > "$SCRIPT_DIR/.cloudflare-token"
-    chmod 600 "$SCRIPT_DIR/.cloudflare-token"
-    echo -e "${GREEN}✓${NC} Token saved for future use"
+    # Save credentials for future use
+    cat > "$SCRIPT_DIR/.cloudflare-credentials" << EOF
+CF_ORIGIN_CA_KEY="$CF_ORIGIN_CA_KEY"
+EOF
+    chmod 600 "$SCRIPT_DIR/.cloudflare-credentials"
+    echo -e "${GREEN}✓${NC} Credentials saved for future use"
 fi
 
 # ==========================================
@@ -229,44 +229,70 @@ if [ -z "$DOMAIN" ]; then
     exit 1
 fi
 
-# Get zone ID from Cloudflare
-echo -e "${BLUE}Looking up zone ID...${NC}"
-ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" \
-    -H "Authorization: Bearer $CF_API_TOKEN" \
-    -H "Content-Type: application/json" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+# Generate CSR and private key
+echo -e "${BLUE}Generating Certificate Signing Request (CSR)...${NC}"
 
-if [ -z "$ZONE_ID" ]; then
-    echo -e "${RED}Error:${NC} Could not find zone ID for $DOMAIN"
-    echo "Please check:"
-    echo "  1. Domain is correct"
-    echo "  2. API token has Zone:Read permission"
-    echo "  3. Domain is in your Cloudflare account"
+# Create temporary directory for CSR generation
+TMP_DIR="/tmp/cloudflare-cert-$$"
+mkdir -p "$TMP_DIR"
+
+# Generate private key and CSR
+openssl req -new -newkey rsa:2048 -nodes \
+    -keyout "$TMP_DIR/origin.key" \
+    -out "$TMP_DIR/origin.csr" \
+    -subj "/CN=$DOMAIN" \
+    -config <(cat << EOF
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+
+[req_distinguished_name]
+
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = $DOMAIN
+DNS.2 = *.$DOMAIN
+EOF
+) > /dev/null 2>&1
+
+if [ ! -f "$TMP_DIR/origin.csr" ]; then
+    echo -e "${RED}Error:${NC} Failed to generate CSR"
+    rm -rf "$TMP_DIR"
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} Found zone ID: $ZONE_ID"
+echo -e "${GREEN}✓${NC} CSR and private key generated"
+
+# Read and escape CSR for JSON
+CSR_CONTENT=$(cat "$TMP_DIR/origin.csr" | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')
 
 # Create origin certificate
 echo -e "${BLUE}Creating origin certificate...${NC}"
-CERT_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/origin_ca_certificates" \
-    -H "Authorization: Bearer $CF_API_TOKEN" \
+CERT_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/certificates" \
+    -H "X-Auth-User-Service-Key: $CF_ORIGIN_CA_KEY" \
     -H "Content-Type: application/json" \
-    -d '{
-        "csr": "",
-        "hostnames": ["*.'$DOMAIN'", "'$DOMAIN'"],
-        "request_type": "origin-rsa",
-        "requested_validity": 5475
-    }')
+    -d "{
+        \"csr\": \"$CSR_CONTENT\",
+        \"hostnames\": [\"*.$DOMAIN\", \"$DOMAIN\"],
+        \"request_type\": \"origin-rsa\",
+        \"requested_validity\": 5475
+    }")
 
-# Extract certificate and private key
+# Extract certificate from response
 CERTIFICATE=$(echo "$CERT_RESPONSE" | grep -o '"certificate":"[^"]*"' | cut -d'"' -f4 | sed 's/\\n/\n/g')
-PRIVATE_KEY=$(echo "$CERT_RESPONSE" | grep -o '"private_key":"[^"]*"' | cut -d'"' -f4 | sed 's/\\n/\n/g')
 
-if [ -z "$CERTIFICATE" ] || [ -z "$PRIVATE_KEY" ]; then
+# Check if certificate creation was successful
+if [ -z "$CERTIFICATE" ]; then
     echo -e "${RED}Error:${NC} Failed to create certificate"
     echo "Response: $CERT_RESPONSE"
+    rm -rf "$TMP_DIR"
     exit 1
 fi
+
+# Use our generated private key
+PRIVATE_KEY=$(cat "$TMP_DIR/origin.key")
 
 echo -e "${GREEN}✓${NC} Certificate created successfully"
 
@@ -351,3 +377,6 @@ echo ""
 echo "If you need to restore this certificate later:"
 echo "  rclone copy backblaze:\${B2_BUCKET_NAME}/certs/ ./traefik/certs/"
 echo ""
+
+# Cleanup temporary directory
+rm -rf "$TMP_DIR"
