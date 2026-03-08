@@ -273,9 +273,15 @@ B2_TERRAFORM_PATH=terraform
 nano traefik/.env
 ```
 
+**Important variable relationships:**
+- `DOMAIN` must match your DNS domain exactly (e.g., `yourdomain.com` — same as Cloudflare)
+- `ACME_EMAIL` is independent — any email you own (Gmail, personal domain, etc.)
+
+`ACME_EMAIL` is used by **Let's Encrypt** (ACME = Automatic Certificate Management Environment), an automatic SSL certificate service that runs as a fallback. Even if you plan to use Cloudflare Origin Certificates in Step 7, Traefik's configuration always has a Let's Encrypt resolver declared, so this email is required. Let's Encrypt uses it for certificate expiry notifications. **You don't need to set up Let's Encrypt** — just provide your email here and Traefik handles the rest automatically.
+
 ```bash
-DOMAIN=yourdomain.com
-ACME_EMAIL=you@yourdomain.com
+DOMAIN=yourdomain.com                       # Must match your DNS domain exactly
+ACME_EMAIL=you@gmail.com                   # Any email you own (for cert notifications)
 TRAEFIK_PASSWORD='$apr1$...'               # See below for how to generate
 ```
 
