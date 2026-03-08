@@ -1,11 +1,9 @@
-version: '3.8'
-
 name: traefik
 
 networks:
   proxy:
-    driver: bridge
-    name: proxy  # Named network for other services to connect to
+    name: proxy
+    external: true
 
 services:
   traefik:

@@ -7,7 +7,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-LOG_FILE="/var/log/selfhost-setup.log"
+LOG_FILE="$SERVER_DIR/logs/setup.log"
 
 # Colors for output
 RED='\033[0;31m'
@@ -119,10 +119,16 @@ install_docker() {
 create_directories() {
     log "Creating directory structure..."
     
-    # Main data directories
-    sudo mkdir -p /data/immich/{thumbnails,cache,b2-mount}
-    sudo mkdir -p /data/backups/{postgres,configs,weekly}
+    # Main data directories (avoid brace expansion issues)
+    sudo mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/b2-mount
+    sudo mkdir -p /data/backups/postgres /data/backups/configs /data/backups/weekly
     sudo mkdir -p /data/monitoring
+    
+    # Ensure FUSE is configured for B2 mount
+    if ! grep -q "^user_allow_other" /etc/fuse.conf; then
+        sudo sed -i 's/#user_allow_other/user_allow_other/' /etc/fuse.conf
+        log_success "FUSE configured for user mounts"
+    fi
     
     # Ensure ownership
     sudo chown -R $USER:$USER /data
@@ -236,13 +242,13 @@ setup_cron() {
     (crontab -l 2>/dev/null || true; cat << EOF
 # Self-Hosted Infrastructure Backups
 # Daily database backup at 2:00 AM
-0 2 * * * $SERVER_DIR/scripts/backup/backup-postgres.sh >> /var/log/postgres-backup.log 2>&1
+0 2 * * * $SERVER_DIR/scripts/backup/backup-postgres.sh >> $SERVER_DIR/logs/postgres-backup.log 2>&1
 
 # Hourly config backup
-0 * * * * $SERVER_DIR/scripts/backup/backup-configs.sh >> /var/log/config-backup.log 2>&1
+0 * * * * $SERVER_DIR/scripts/backup/backup-configs.sh >> $SERVER_DIR/logs/config-backup.log 2>&1
 
 # Weekly full backup on Sundays at 3:00 AM
-0 3 * * 0 $SERVER_DIR/scripts/backup/backup-weekly.sh >> /var/log/weekly-backup.log 2>&1
+0 3 * * 0 $SERVER_DIR/scripts/backup/backup-weekly.sh >> $SERVER_DIR/logs/weekly-backup.log 2>&1
 EOF
     ) | crontab -
     
@@ -277,6 +283,9 @@ setup_docker_compose() {
 # MAIN EXECUTION
 # ==========================================
 main() {
+    # Create logs directory before first log call
+    mkdir -p "$SERVER_DIR/logs"
+    
     log "======================================"
     log "Self-Hosted Infrastructure Setup"
     log "======================================"

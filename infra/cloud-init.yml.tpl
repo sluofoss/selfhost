@@ -169,7 +169,7 @@ runcmd:
   # ==========================================
   # CREATE DIRECTORY STRUCTURE
   # ==========================================
-  - mkdir -p /data/immich/{thumbnails,cache,b2-mount}
+  - mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/b2-mount
   - mkdir -p /data/backups/{postgres,configs,weekly}
   - mkdir -p /data/monitoring
   - chown -R ubuntu:ubuntu /data
@@ -286,6 +286,15 @@ runcmd:
       # Don't exit, continue with other setup tasks
       return 1
     fi
+
+  # ==========================================
+  # CONFIGURE FUSE (for B2 mount)
+  # ==========================================
+  - |
+    echo "Configuring FUSE for user mounts..."
+    # Enable user_allow_other in FUSE configuration for B2 mount
+    sed -i 's/#user_allow_other/user_allow_other/' /etc/fuse.conf
+    echo "FUSE configuration updated for B2 mount support"
 
   # ==========================================
   # CONFIGURE FIREWALL

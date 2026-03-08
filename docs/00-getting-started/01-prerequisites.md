@@ -328,6 +328,8 @@ This sets up the B2 rclone mount, backup cron jobs, and pulls Docker images:
 ./scripts/setup/install.sh
 ```
 
+> **Note**: If you encounter permission issues, the script automatically fixes common problems like FUSE configuration and directory permissions. If B2 mount fails, check that your B2 credentials in `.env` are correct.
+
 Then log out and back in so Docker group permissions take effect:
 
 ```bash
@@ -347,6 +349,11 @@ ls /data/immich/b2-mount/
 cd ~/selfhost/server
 ./start.sh
 ```
+
+> **Troubleshooting B2 Mount**: If `rclone-b2-mount` fails to start:
+> - Check logs: `journalctl -xeu rclone-b2-mount.service`
+> - Verify B2 credentials in `.env` file
+> - The install script should have fixed FUSE permissions automatically
 
 Verify everything is running:
 

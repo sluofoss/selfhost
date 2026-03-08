@@ -1,4 +1,4 @@
-version: '3.8'
+# Removed deprecated version field
 
 name: monitoring
 
