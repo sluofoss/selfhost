@@ -3,7 +3,8 @@ http:
     auth:
       basicAuth:
         users:
-          - "admin:${TRAEFIK_PASSWORD}"
+          # Dynamic file config uses Traefik Go templates, not ${VAR} expansion.
+          - 'admin:{{ env "TRAEFIK_PASSWORD" }}'
     
     security-headers:
       headers:

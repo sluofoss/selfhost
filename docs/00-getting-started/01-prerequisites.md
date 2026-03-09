@@ -293,6 +293,8 @@ htpasswd -nb admin your-secure-password
 # Copy the entire output as the TRAEFIK_PASSWORD value
 ```
 
+Traefik's dynamic middleware file reads that hash with `{{ env "TRAEFIK_PASSWORD" }}`, so keep the `.env` value as the htpasswd hash rather than the plaintext password.
+
 ### 5c. Immich Environment File
 
 ```bash

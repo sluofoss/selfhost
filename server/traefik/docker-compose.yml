@@ -7,7 +7,7 @@ networks:
 
 services:
   traefik:
-    image: traefik:v2.10
+    image: traefik:v2.11.31
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -39,7 +39,7 @@ services:
     networks:
       - proxy
     healthcheck:
-      test: ["CMD", "traefik", "ping"]
+      test: ["CMD", "traefik", "healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3
