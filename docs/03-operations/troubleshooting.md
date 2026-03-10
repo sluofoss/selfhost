@@ -218,7 +218,7 @@ curl http://localhost:2283  # Immich
 **Check**:
 ```bash
 # Check backup logs
-tail -f /var/log/postgres-backup.log
+tail -f ~/selfhost/server/logs/postgres-backup.log
 
 # Test rclone B2 connection
 rclone ls backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/

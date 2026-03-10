@@ -154,8 +154,8 @@ curl http://localhost:2283/api/server/ping
 
 ```bash
 # View recent backup logs
-tail -f /var/log/postgres-backup.log
-tail -f /var/log/config-backup.log
+tail -f ~/selfhost/server/logs/postgres-backup.log
+tail -f ~/selfhost/server/logs/config-backup.log
 
 # Check B2 sync status
 rclone ls backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/

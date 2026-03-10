@@ -330,7 +330,7 @@ This sets up the B2 rclone mount, backup cron jobs, and pulls Docker images:
 ./scripts/setup/install.sh
 ```
 
-> **Note**: If you encounter permission issues, the script automatically fixes common problems like FUSE configuration and directory permissions. If B2 mount fails, check that your B2 credentials in `.env` are correct.
+> **Note**: If you re-run `install.sh`, it refreshes the backup cron block in place instead of stacking duplicate entries. If B2 mount fails, check that your B2 credentials in `.env` are correct.
 
 Then log out and back in so Docker group permissions take effect:
 

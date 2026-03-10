@@ -123,8 +123,8 @@ rclone copy backblaze:${B2_BUCKET_NAME}/certs/ ./traefik/certs/
 
 ```bash
 # View recent backup logs
-tail -20 /var/log/postgres-backup.log
-tail -20 /var/log/config-backup.log
+tail -20 ~/selfhost/server/logs/postgres-backup.log
+tail -20 ~/selfhost/server/logs/config-backup.log
 
 # List B2 backups
 rclone ls backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/
