@@ -19,7 +19,6 @@ BACKUP_ROOT="/data/backups/weekly"
 B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"
 RETENTION_WEEKS=4
 DATE=$(date +%Y%m%d)
-LOG_FILE="/var/log/weekly-backup.log"
 
 # Directories to backup
 BACKUP_DIRS=(
@@ -30,7 +29,7 @@ BACKUP_DIRS=(
 
 # Logging function
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1"
 }
 
 log "Starting weekly full backup..."

@@ -21,12 +21,11 @@ CONFIG_DIRS=(
 )
 B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"
 B2_PATH="${B2_BACKUPS_PATH:-backups}/configs"
-LOG_FILE="/var/log/config-backup.log"
 LAST_BACKUP_FILE="/tmp/last-config-backup"
 
 # Logging function
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1"
 }
 
 # Function to backup configs
@@ -66,11 +65,12 @@ backup_configs() {
         
         # Create timestamped backup
         BACKUP_NAME="config-$(date +%Y%m%d_%H%M%S).tar.gz"
-        tar -czf "$TEMP_DIR/../$BACKUP_NAME" -C "$TEMP_DIR" . 2>/dev/null
+        BACKUP_ARCHIVE="$(mktemp --tmpdir "${BACKUP_NAME%.tar.gz}.XXXXXX.tar.gz")"
+        tar -czf "$BACKUP_ARCHIVE" -C "$TEMP_DIR" . 2>/dev/null
         
         # Sync to B2
         if command -v rclone &> /dev/null; then
-            rclone copy "$TEMP_DIR/../$BACKUP_NAME" "backblaze:${B2_BUCKET}/${B2_PATH}/"
+            rclone copyto "$BACKUP_ARCHIVE" "backblaze:${B2_BUCKET}/${B2_PATH}/${BACKUP_NAME}"
             rclone sync "$TEMP_DIR" "backblaze:${B2_BUCKET}/${B2_PATH}/latest/"
             log "✓ Configurations synced to B2"
             
@@ -80,7 +80,7 @@ backup_configs() {
             log "✗ rclone not found, skipping B2 sync"
         fi
         
-        rm -f "$TEMP_DIR/../$BACKUP_NAME"
+        rm -f "$BACKUP_ARCHIVE"
     else
         log "No configuration changes detected"
     fi

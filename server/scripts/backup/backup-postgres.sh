@@ -20,14 +20,13 @@ B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"
 B2_PATH="${B2_BACKUPS_PATH:-backups}/postgres"
 RETENTION_DAYS=7
 DATE=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="/var/log/postgres-backup.log"
 
 # Ensure backup directory exists
 mkdir -p "$BACKUP_DIR"
 
 # Logging function
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1"
 }
 
 log "Starting PostgreSQL backup..."
