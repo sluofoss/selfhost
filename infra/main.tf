@@ -42,6 +42,14 @@ resource "oci_core_route_table" "immich_route_table" {
   }
 }
 
+data "cloudflare_ip_ranges" "cloudflare" {
+  count = var.restrict_web_to_cloudflare ? 1 : 0
+}
+
+locals {
+  web_ingress_cidrs = var.restrict_web_to_cloudflare ? data.cloudflare_ip_ranges.cloudflare[0].ipv4_cidr_blocks : ["0.0.0.0/0"]
+}
+
 # Security List (Firewall Rules)
 resource "oci_core_security_list" "immich_security_list" {
   compartment_id = var.compartment_ocid
@@ -49,35 +57,44 @@ resource "oci_core_security_list" "immich_security_list" {
   display_name   = "immich-security-list"
 
   # SSH access
-  ingress_security_rules {
-    protocol    = "6" # TCP
-    source      = "0.0.0.0/0"
-    description = "SSH"
-    tcp_options {
-      min = 22
-      max = 22
+  dynamic "ingress_security_rules" {
+    for_each = var.ssh_allowed_cidrs
+    content {
+      protocol    = "6" # TCP
+      source      = ingress_security_rules.value
+      description = "SSH"
+      tcp_options {
+        min = 22
+        max = 22
+      }
     }
   }
 
-  # HTTP - Required for Let's Encrypt and Cloudflare
-  ingress_security_rules {
-    protocol    = "6" # TCP
-    source      = "0.0.0.0/0"
-    description = "HTTP"
-    tcp_options {
-      min = 80
-      max = 80
+  # HTTP - Either world-open (default) or Cloudflare-only when enabled
+  dynamic "ingress_security_rules" {
+    for_each = local.web_ingress_cidrs
+    content {
+      protocol    = "6" # TCP
+      source      = ingress_security_rules.value
+      description = var.restrict_web_to_cloudflare ? "HTTP from Cloudflare" : "HTTP"
+      tcp_options {
+        min = 80
+        max = 80
+      }
     }
   }
 
-  # HTTPS
-  ingress_security_rules {
-    protocol    = "6" # TCP
-    source      = "0.0.0.0/0"
-    description = "HTTPS"
-    tcp_options {
-      min = 443
-      max = 443
+  # HTTPS - Either world-open (default) or Cloudflare-only when enabled
+  dynamic "ingress_security_rules" {
+    for_each = local.web_ingress_cidrs
+    content {
+      protocol    = "6" # TCP
+      source      = ingress_security_rules.value
+      description = var.restrict_web_to_cloudflare ? "HTTPS from Cloudflare" : "HTTPS"
+      tcp_options {
+        min = 443
+        max = 443
+      }
     }
   }
 

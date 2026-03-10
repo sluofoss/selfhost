@@ -86,6 +86,25 @@ If you prefer Let's Encrypt certificates instead of Origin Certificates:
 - Cache static assets longer
 - Redirect HTTP to HTTPS
 
+### 5. Optional: Restrict web ingress to Cloudflare only
+
+If you want OCI to accept `80/443` traffic only from Cloudflare rather than from the whole internet, the OpenTofu stack now supports that as an explicit toggle.
+
+Set this in your infra variables before `tofu apply`:
+
+```hcl
+restrict_web_to_cloudflare = true
+```
+
+Notes:
+
+- this only affects **HTTP/HTTPS**
+- SSH is still controlled separately via `ssh_allowed_cidrs`
+- if you enable this, keep your DNS records proxied through Cloudflare
+- export `CLOUDFLARE_API_TOKEN` before `tofu plan` / `tofu apply` so OpenTofu can read `cloudflare_ip_ranges`
+- the allowlist now comes from Cloudflare's published IPv4 ranges dynamically, so you no longer need to hand-maintain the CIDR list in code
+- if you still rely on direct origin access for troubleshooting, remember that enabling this will block that path
+
 ## Other DNS Providers
 
 If you prefer not to use Cloudflare:
