@@ -169,7 +169,7 @@ runcmd:
   # ==========================================
   # CREATE DIRECTORY STRUCTURE
   # ==========================================
-  - mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/b2-mount
+  - mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/rclone-cache /data/immich/ml-cache /data/immich/postgres /data/immich/b2-mount
   - mkdir -p /data/backups/{postgres,configs,weekly}
   - mkdir -p /data/monitoring
   - chown -R ubuntu:ubuntu /data

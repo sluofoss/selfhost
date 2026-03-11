@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Weekly Full Volume Backup Script
-# Creates snapshots of critical data volumes
+# Weekly Bounded Backup Script
+# Creates snapshots of critical local data volumes
 # Syncs to B2 for disaster recovery
 
 set -e
@@ -21,8 +21,9 @@ RETENTION_WEEKS=4
 DATE=$(date +%Y%m%d)
 
 # Directories to backup
+# Rebuildable thumbnail/preview derivatives are intentionally excluded to keep
+# the weekly snapshot bounded and aligned with the lean rebuild-first design.
 BACKUP_DIRS=(
-    "/data/immich/thumbnails"
     "/data/backups/postgres"
     "/var/lib/docker/volumes"
 )
@@ -32,7 +33,7 @@ log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1"
 }
 
-log "Starting weekly full backup..."
+log "Starting weekly bounded backup..."
 
 # Create weekly backup directory
 WEEKLY_DIR="${BACKUP_ROOT}/${DATE}"
@@ -61,9 +62,10 @@ if command -v rclone &> /dev/null; then
     rclone sync "$WEEKLY_DIR" "backblaze:${B2_BUCKET}/${B2_BACKUPS_PATH:-backups}/weekly/${DATE}/"
     log "✓ Weekly backup synced to B2"
     
-    # Cleanup old weekly backups from B2
+    # Cleanup old weekly backups from B2. Deleting from the backup root with an
+    # include filter avoids the slow direct `weekly/` prefix walk against B2.
     log "Cleaning up old weekly backups..."
-    rclone delete --min-age ${RETENTION_WEEKS}w "backblaze:${B2_BUCKET}/${B2_BACKUPS_PATH:-backups}/weekly/"
+    rclone delete --min-age ${RETENTION_WEEKS}w "backblaze:${B2_BUCKET}/${B2_BACKUPS_PATH:-backups}" --include "/weekly/**"
 fi
 
 # Cleanup local backups

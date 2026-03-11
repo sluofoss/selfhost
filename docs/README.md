@@ -12,6 +12,7 @@ A production-ready, cost-effective ($0-7/month) self-hosted infrastructure for p
 |--------------|-------|
 | **Get started immediately** | [Getting Started Guide](00-getting-started/00-index.md) |
 | **Understand the architecture** | [Architecture Overview](01-architecture/overview.md) |
+| **Review the Immich storage decision** | [Immich Storage Decision](01-architecture/immich-storage-decision.md) |
 | **Set up DNS & SSL** | [DNS Configuration](02-setup/dns-configuration.md) |
 | **Operate it daily** | [Operations Guide](03-operations/daily-operations.md) |
 | **Fix a problem** | [Troubleshooting](03-operations/troubleshooting.md) |
@@ -53,8 +54,8 @@ cd server && ./start.sh
 | Service | Monthly Cost |
 |---------|-------------|
 | Oracle OCI | **$0** (Always Free tier) |
-| Backblaze B2 (1TB photos) | **~$7** |
-| **Total** | **~$7/month** |
+| Backblaze B2 (1TB photos) | **~$6-7** |
+| **Total** | **~$6-7/month** |
 
 See [full cost analysis](01-architecture/storage-strategy.md#cost-analysis)
 

@@ -108,11 +108,11 @@ A `busybox-monitor` container runs alongside Traefik to generate minimal activit
 | Service Type | Data | Backup Strategy |
 |--------------|------|-----------------|
 | **Stateful** | PostgreSQL databases | Daily dumps → B2 |
-| **Semi-Stateful** | Thumbnails, caches | Weekly snapshots → B2 |
+| **Semi-Stateful** | Thumbnails, previews, caches | Keep local for performance, but treat rebuildable derivatives selectively in backups |
 | **Configuration** | .env files, compose files | Hourly sync → B2 (on change) |
 | **Infrastructure** | Terraform state | Backed up to B2 via `apply.sh` |
 
-See [Storage Strategy](storage-strategy.md) for details.
+See [Storage Strategy](storage-strategy.md) and [Immich Storage Decision](immich-storage-decision.md) for details.
 
 ## Security Model
 

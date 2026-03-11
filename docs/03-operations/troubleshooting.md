@@ -6,6 +6,7 @@
 # Check everything is running
 cd ~/selfhost/server/traefik && docker compose ps
 cd ~/selfhost/server/immich && docker compose ps
+cd ~/selfhost/server/devtools && docker compose ps
 
 # Check recent errors
 docker compose logs --tail 50 | grep -i error
@@ -33,7 +34,7 @@ docker compose logs
 df -h
 
 # Check if .env files exist
-ls -la .env traefik/.env immich/.env
+ls -la .env traefik/.env immich/.env monitoring/.env devtools/.env
 ```
 
 **Solutions**:
@@ -155,13 +156,13 @@ df -h /data/immich/thumbnails
    - See B2 Mount section above
 
 2. **Thumbnails volume full**
-   ```bash
-   # Check usage
-   du -sh /data/immich/thumbnails/*
-   
-   # Clean old thumbnails (Immich will regenerate)
-   find /data/immich/thumbnails -mtime +30 -delete
-   ```
+    ```bash
+    # Check the main local-storage surfaces
+    du -sh /data/immich/thumbnails /data/immich/postgres /data/immich/ml-cache /data/immich/rclone-cache
+    
+    # Reclaim rebuildable preview JPEGs first
+    find /data/immich/thumbnails -type f -name '*_preview.jpeg' -delete
+    ```
 
 3. **Database issues**
    ```bash

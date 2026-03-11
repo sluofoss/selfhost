@@ -6,15 +6,18 @@
 |-----------|-----------|-------------|-----------|
 | PostgreSQL databases | Daily at 2 AM | Local + B2 | 7 days local, 30 days B2 |
 | Configuration files | Hourly (on change) | B2 only | 24 hours |
-| Full volume snapshots | Weekly (Sunday 3 AM) | Local + B2 | 4 weeks |
+| Bounded weekly snapshots | Weekly (Sunday 3 AM) | Local + B2 | 4 weeks |
 | Terraform state | On every `apply.sh` run | B2 | 90 days |
 | SSL certificates | On creation | B2 | Forever |
 
 **Note**: Original photos are stored directly in B2 via the rclone FUSE mount, so they don't need separate backup — B2 *is* the primary storage.
+Derivative thumbnails and preview JPEGs are intentionally rebuildable local data and are not part of the weekly snapshot by default.
 
 ## Automated Backups
 
 Backups run automatically via cron. No manual intervention needed.
+
+All commands in this document are intended to be run on the remote OCI host after you SSH in. Do not run the setup or backup scripts from your local workstation.
 
 ### What's Backed Up
 
@@ -30,9 +33,9 @@ Backups run automatically via cron. No manual intervention needed.
 **Note on .env backups**: The hourly config backup includes `.env` files (which contain secrets like B2 keys and database passwords). These are stored in your B2 bucket which has encryption enabled. This is an acceptable trade-off for personal use — it means you can fully restore your setup from B2 alone.
 
 **Weekly**:
-- Full thumbnails volume
 - Database dump archive
 - Docker volumes
+- Not thumbnails/previews by default — those regenerate from originals
 
 ## Manual Backup Operations
 
@@ -53,10 +56,10 @@ cd ~/selfhost/server
 ./scripts/backup/backup-configs.sh
 ```
 
-### Weekly Full Backup
+### Weekly Bounded Backup
 
 ```bash
-# Full volume backup
+# Weekly bounded backup
 ./scripts/backup/backup-weekly.sh
 ```
 
@@ -117,6 +120,13 @@ rclone copy backblaze:${B2_BUCKET_NAME}/certs/ ./traefik/certs/
 ./start.sh
 ```
 
+After startup:
+
+- originals are available immediately through the B2 mount
+- the database restores albums, metadata, and user state
+- thumbnails/previews regenerate locally as Immich rehydrates derived files
+- ML models and the rclone cache warm again on the local block volume
+
 ## Monitoring Backups
 
 ### Check Backup Status
@@ -146,7 +156,8 @@ find /data/backups/postgres -mtime -1  # Files modified in last 24h
 
 Location: `/data/backups/`
 - Fast restore
-- 7-day retention
+- 7-day retention for daily PostgreSQL dumps
+- 4-week retention for weekly bounded snapshots
 - Limited by block volume size (200GB)
 
 ### Backblaze B2
@@ -160,5 +171,7 @@ Location: `<your-bucket>/${B2_BACKUPS_PATH:-backups}/`
 ### Cleanup
 
 Old backups are automatically cleaned up:
-- Local: Deleted after 7 days
-- B2: Deleted after 30 days (configurable)
+- Local PostgreSQL dumps: Deleted after 7 days
+- Local weekly snapshots: Deleted after 4 weeks
+- B2 PostgreSQL dumps: Deleted after 30 days
+- B2 weekly snapshots: Deleted after 4 weeks

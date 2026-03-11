@@ -36,6 +36,7 @@ This folder contains everything you need to understand, set up, and operate the 
 |------|---------|
 | [overview.md](../01-architecture/overview.md) | Core architecture decisions |
 | [storage-strategy.md](../01-architecture/storage-strategy.md) | OCI + B2 hybrid explained |
+| [immich-storage-decision.md](../01-architecture/immich-storage-decision.md) | Why Immich uses the lean rebuild-first storage model |
 | [roadmap.md](../01-architecture/roadmap.md) | Future plans and phases |
 
 ### 02-setup/

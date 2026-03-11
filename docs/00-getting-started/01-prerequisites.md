@@ -322,7 +322,23 @@ GRAFANA_USER=admin
 GRAFANA_PASSWORD=<a-secure-password>
 ```
 
-### 5e. Run Post-Config Setup
+### 5e. Optional Devtools Environment File
+
+If you want the devtools bundle (`code-server` + internal-only `Ollama` + `FileBrowser`), configure its env file now:
+
+```bash
+nano devtools/.env
+```
+
+```bash
+DOMAIN=yourdomain.com
+CODE_SERVER_PASSWORD=<a-secure-password>
+OLLAMA_MODEL=qwen2.5-coder:3b
+OLLAMA_NUM_PARALLEL=4
+OLLAMA_KEEP_ALIVE=-1
+```
+
+### 5f. Run Post-Config Setup
 
 This sets up the B2 rclone mount, backup cron jobs, and pulls Docker images:
 
@@ -339,7 +355,7 @@ exit
 ssh -i ~/.ssh/id_ed25519 ubuntu@<your-server-ip>
 ```
 
-### 5f. Start the B2 Mount and Services
+### 5g. Start the B2 Mount and Services
 
 ```bash
 sudo systemctl start rclone-b2-mount
@@ -490,7 +506,7 @@ dig photos.yourdomain.com +short
 **Automated processes running**:
 - Hourly config backup to B2 (on change)
 - Daily database backup at 2 AM
-- Weekly full backup on Sundays at 3 AM
+- Weekly bounded backup on Sundays at 3 AM
 - B2 FUSE mount for photo storage
 - UFW firewall (ports 22, 80, 443 only)
 

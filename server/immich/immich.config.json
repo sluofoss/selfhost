@@ -1,0 +1,14 @@
+{
+  "image": {
+    "thumbnail": {
+      "format": "webp",
+      "size": 250,
+      "quality": 80
+    },
+    "preview": {
+      "format": "jpeg",
+      "size": 720,
+      "quality": 50
+    }
+  }
+}

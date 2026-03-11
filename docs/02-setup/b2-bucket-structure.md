@@ -29,9 +29,8 @@ This infrastructure uses a **single Backblaze B2 bucket** for all storage needs:
 │   ├── certs/                # SSL certificates
 │   │   ├── origin-cert.pem
 │   │   └── origin-key.pem
-│   └── weekly/               # Full volume snapshots
+│   └── weekly/               # Weekly bounded snapshots
 │       └── 20260307/
-│           ├── thumbnails.tar.gz
 │           ├── postgres.tar.gz
 │           └── volumes.tar.gz
 └── terraform/                 # Terraform state backups
@@ -58,7 +57,16 @@ B2_BUCKET_NAME=your-bucket-name
 B2_PHOTOS_PATH=photos
 B2_BACKUPS_PATH=backups
 B2_TERRAFORM_PATH=terraform
+
+# Local rclone cache path on the OCI block volume
+RCLONE_CACHE_DIR=/data/immich/rclone-cache
 ```
+
+## Important storage note
+
+Immich thumbnails and preview JPEGs are rebuildable local derivatives.
+
+They are intentionally **not** archived into the weekly snapshot by default, because keeping originals in B2 plus a restorable database gives a cheaper and more bounded rebuild path than repeatedly storing derivative thumbnails again.
 
 ## Why Single Bucket?
 
@@ -114,14 +122,15 @@ Configure in B2 console or via B2 CLI.
 
 **Current cost structure**:
 - Storage: $0.006/GB/month
-- Download: $0.01/GB (first 1GB/day free)
-- API calls: $0.004 per 10,000 (Class B)
+- Egress: free up to 3x average monthly storage, then $0.01/GB
+- API calls: $0.004 per 10,000 (Class B), $0.004 per 1,000 (Class C)
+- Uploads: free (Class A)
 
 **Typical monthly cost**:
 - 1TB photos: ~$6
-- 50GB backups: ~$0.30
-- API calls: ~$0.10
-- **Total: ~$6.40/month**
+- small backups: usually cents
+- API calls: usually cents unless you repeatedly cold-scan the mounted tree
+- **Total: storage dominates; transactions are usually secondary**
 
 ## Security
 
