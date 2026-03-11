@@ -1,10 +1,12 @@
 # Agent instructions
 
-This repository keeps reusable agent skills in `docs/ai/skills/`. Use the detailed skill files when relevant, and follow the condensed guidance below even if you do not open the linked files separately.
+This repository keeps reusable agent skills in `docs/ai/skills/`, but that directory is documentation rather than an autoload hook. If a shared skill must reliably apply, explicitly list it here and in `CLAUDE.md`, and treat the files in `docs/ai/skills/` as the detailed source material behind the inline guidance below.
 
 ## Shared skill files
 - `docs/ai/skills/workbench-feature-brief.md`
 - `docs/ai/skills/personal-server-principles.md`
+
+When you add another shared skill, add both the skill file and a concise summary in the agent instruction files that are actually read.
 
 ## Workbench feature brief
 Use this skill for non-trivial features, refactors, or operational changes that need planning or research.
