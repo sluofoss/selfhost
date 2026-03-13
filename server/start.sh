@@ -125,6 +125,17 @@ echo ""
 echo "Step 2: Starting application (Immich)..."
 start_service "Immich" "immich"
 
+# Step 4: Start Devtools (optional application layer)
+if [ -d "$SCRIPT_DIR/devtools" ]; then
+    echo ""
+    read -p "Start devtools services? (y/N): " start_devtools
+    if [[ $start_devtools =~ ^[Yy]$ ]]; then
+        start_service "Devtools (code-server + Ollama + FileBrowser)" "devtools"
+    else
+        echo -e "${YELLOW}!${NC} Skipping devtools"
+    fi
+fi
+
 echo ""
 echo "======================================"
 echo -e "${GREEN}All services started successfully!${NC}"
@@ -134,11 +145,17 @@ echo "Access URLs:"
 echo "  - Traefik Dashboard: http://$(hostname -I | awk '{print $1}'):8080"
 echo "  - Immich:            https://photos.<your-domain> (requires DNS setup)"
 echo "  - Grafana:           https://grafana.<your-domain> (if enabled)"
+echo "  - code-server:       https://vscode.<your-domain> (if enabled)"
+echo "  - FileBrowser:       https://files.<your-domain> (if enabled)"
 echo ""
 echo "Service Status:"
 cd "$SCRIPT_DIR/traefik" && docker compose ps
 echo ""
 cd "$SCRIPT_DIR/immich" && docker compose ps
+if [ -d "$SCRIPT_DIR/devtools" ] && [ -f "$SCRIPT_DIR/devtools/docker-compose.yml" ]; then
+    echo ""
+    cd "$SCRIPT_DIR/devtools" && docker compose ps
+fi
 echo ""
 echo "To check logs:"
 echo "  cd traefik && docker compose logs -f"

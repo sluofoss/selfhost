@@ -120,7 +120,8 @@ create_directories() {
     log "Creating directory structure..."
     
     # Main data directories (avoid brace expansion issues)
-    sudo mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/b2-mount
+    sudo mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/rclone-cache /data/immich/ml-cache /data/immich/postgres /data/immich/b2-mount
+    sudo mkdir -p /data/devtools/projects /data/devtools/code-server /data/devtools/filebrowser /data/devtools/ollama
     sudo mkdir -p /data/backups/postgres /data/backups/configs /data/backups/weekly
     sudo mkdir -p /data/monitoring
     
@@ -184,6 +185,7 @@ ExecStart=/bin/bash -c '/usr/bin/rclone mount backblaze:\${B2_BUCKET_NAME}/\${B2
     --b2-account \${B2_APPLICATION_KEY_ID} \
     --b2-key \${B2_APPLICATION_KEY} \
     --allow-other \
+    --cache-dir \${RCLONE_CACHE_DIR:-/data/immich/rclone-cache} \
     --vfs-cache-mode writes \
     --vfs-cache-max-size 10G \
     --buffer-size 256M \
@@ -237,9 +239,30 @@ configure_firewall() {
 # ==========================================
 setup_cron() {
     log "Setting up backup cron jobs..."
-    
-    # Create cron entries
-    (crontab -l 2>/dev/null || true; cat << EOF
+
+    mkdir -p "$SERVER_DIR/logs"
+
+    # Remove any previously installed backup entries, then install a single fresh block.
+    local existing_cron
+    existing_cron="$(
+        crontab -l 2>/dev/null || true
+    )"
+
+    existing_cron="$(
+        printf '%s\n' "$existing_cron" \
+            | grep -v -F "# Self-Hosted Infrastructure Backups" \
+            | grep -v -F "# Daily database backup at 2:00 AM" \
+            | grep -v -F "# Hourly config backup" \
+            | grep -v -F "# Weekly bounded backup on Sundays at 3:00 AM" \
+            | grep -v -F "$SERVER_DIR/scripts/backup/backup-postgres.sh" \
+            | grep -v -F "$SERVER_DIR/scripts/backup/backup-configs.sh" \
+            | grep -v -F "$SERVER_DIR/scripts/backup/backup-weekly.sh" \
+            || true
+    )"
+
+    {
+        printf '%s\n' "$existing_cron" | sed '/^[[:space:]]*$/d'
+        cat << EOF
 # Self-Hosted Infrastructure Backups
 # Daily database backup at 2:00 AM
 0 2 * * * $SERVER_DIR/scripts/backup/backup-postgres.sh >> $SERVER_DIR/logs/postgres-backup.log 2>&1
@@ -247,10 +270,10 @@ setup_cron() {
 # Hourly config backup
 0 * * * * $SERVER_DIR/scripts/backup/backup-configs.sh >> $SERVER_DIR/logs/config-backup.log 2>&1
 
-# Weekly full backup on Sundays at 3:00 AM
+# Weekly bounded backup on Sundays at 3:00 AM
 0 3 * * 0 $SERVER_DIR/scripts/backup/backup-weekly.sh >> $SERVER_DIR/logs/weekly-backup.log 2>&1
 EOF
-    ) | crontab -
+    } | crontab -
     
     log_success "Cron jobs configured"
 }
@@ -273,6 +296,11 @@ setup_docker_compose() {
     
     if [ -d "$SERVER_DIR/monitoring" ]; then
         cd "$SERVER_DIR/monitoring"
+        docker compose pull
+    fi
+
+    if [ -d "$SERVER_DIR/devtools" ]; then
+        cd "$SERVER_DIR/devtools"
         docker compose pull
     fi
     
