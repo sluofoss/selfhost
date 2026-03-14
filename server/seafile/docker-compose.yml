@@ -44,8 +44,14 @@ services:
     env_file: .env
     environment:
       DB_HOST: db
+      SEAFILE_MYSQL_DB_HOST: db
+      SEAFILE_MYSQL_DB_USER: seafile
+      SEAFILE_MYSQL_DB_CCNET_DB_NAME: ccnet_db
+      SEAFILE_MYSQL_DB_SEAFILE_DB_NAME: seafile_db
+      SEAFILE_MYSQL_DB_SEAHUB_DB_NAME: seahub_db
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${SEAFILE_REDIS_PASSWORD}"
       SEAFILE_SERVER_PROTOCOL: https
       CACHE_PROVIDER: redis
     depends_on:
