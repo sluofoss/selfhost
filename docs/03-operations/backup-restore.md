@@ -8,7 +8,9 @@
 | Configuration files | Hourly (on change) | B2 only | 24 hours |
 | Bounded weekly snapshots | Weekly (Sunday 3 AM) | Local + B2 | 4 weeks |
 | Terraform state | On every `apply.sh` run | B2 | 90 days |
-| SSL certificates | On creation | B2 | Forever |
+| SSL certificates | On creation | B2 | Forever (Cloudflare Origin Cert only) |
+
+**Note**: TLS certificates are issued automatically via Let's Encrypt DNS-01 on each fresh deploy and do not need to be backed up or restored. The B2 cert backup row above applies only if you have a Cloudflare Origin Cert in use.
 
 **Note**: Original photos are stored directly in B2 via the rclone FUSE mount, so they don't need separate backup — B2 *is* the primary storage.
 Derivative thumbnails and preview JPEGs are intentionally rebuildable local data and are not part of the weekly snapshot by default.
@@ -105,6 +107,7 @@ ssh -i ~/.ssh/id_ed25519 ubuntu@<your-server-ip>
 cd ~/selfhost/server
 cp .env.example .env
 # Edit .env with your B2 credentials, domain, etc.
+# Configure authelia/.env, traefik/.env, immich/.env, etc.
 
 # 4. Run post-config setup
 ./scripts/setup/install.sh
@@ -113,10 +116,7 @@ cp .env.example .env
 rclone copy backblaze:${B2_BUCKET_NAME}/${B2_BACKUPS_PATH:-backups}/postgres/ /data/backups/postgres/
 ./scripts/backup/restore-postgres.sh immich
 
-# 6. Restore SSL certificates (if using Cloudflare Origin Certs)
-rclone copy backblaze:${B2_BUCKET_NAME}/certs/ ./traefik/certs/
-
-# 7. Start services
+# 6. Start services (TLS certs are auto-issued via DNS-01 on first start — no cert restore needed)
 ./start.sh
 ```
 

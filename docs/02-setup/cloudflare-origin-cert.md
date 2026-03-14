@@ -1,5 +1,7 @@
 # Cloudflare Origin Certificate Setup
 
+> **Current TLS strategy**: This stack uses **Let's Encrypt DNS-01** (via Cloudflare API) as the primary certificate source. Traefik requests and renews certificates automatically on startup — no manual cert management needed. The Cloudflare Origin Certificate approach below is a secondary/legacy option for cases where ACME is unavailable or you want a static long-lived cert alongside the Cloudflare proxy.
+
 This guide walks you through setting up Cloudflare Origin Certificates for SSL termination.
 
 ## Why Origin Certificates?

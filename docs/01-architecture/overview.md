@@ -36,10 +36,13 @@ Each service has its own database and Redis:
 
 ```
 server/
-├── traefik/           # Reverse proxy only
+├── traefik/           # Reverse proxy + ACME TLS
+├── authelia/          # Forward-auth SSO/MFA gateway
 ├── immich/            # PostgreSQL + Redis (isolated)
-├── monitoring/        # Prometheus only (stateless)
-└── future-service/    # Will have own DB
+├── monitoring/        # Prometheus + Grafana (stateless)
+├── seafile/           # File sync (MariaDB)
+├── devtools/          # code-server + Ollama
+└── trading/           # TimescaleDB + TWS
 ```
 
 **Decision**: Isolated databases per service
@@ -86,20 +89,26 @@ Internet
     │
     ▼
 ┌──────────┐
-│ Traefik  │◄── SSL termination (Cloudflare Origin Cert or Let's Encrypt)
+│ Traefik  │◄── SSL termination (Let's Encrypt DNS-01 via Cloudflare)
 │ (Proxy)  │
 └────┬─────┘
      │
-     ├──► Immich (photos.yourdomain.com)
+     ├──► Authelia (auth.example.com) ◄── forward-auth for admin surfaces
+     │         │
+     │         └── protects: traefik.*, grafana.*, vscode.*
      │
-     └──► Grafana (grafana.yourdomain.com)
+     ├──► Immich (photos.example.com)          — bypasses Authelia (own auth)
+     ├──► immich-public-proxy (share.example.com) — public share links
+     ├──► Grafana (grafana.example.com)         — Authelia one-factor
+     ├──► Seafile (files.example.com)           — Authelia one-factor (web UI)
+     ├──► code-server (vscode.example.com)      — Authelia two-factor
+     └──► Traefik Dashboard (traefik.example.com) — Authelia two-factor
 ```
 
 **Traefik** handles:
-- SSL certificate management (Origin Certs recommended, Let's Encrypt as fallback)
+- SSL certificate management (Let's Encrypt DNS-01 via Cloudflare — auto-renewed)
 - Reverse proxy routing
-- Basic auth for admin interfaces
-- Rate limiting (future)
+- Forwarding auth decisions to Authelia for protected services
 
 A `busybox-monitor` container runs alongside Traefik to generate minimal activity, preventing OCI from reclaiming idle free-tier instances.
 
@@ -117,8 +126,11 @@ See [Storage Strategy](storage-strategy.md) and [Immich Storage Decision](immich
 ## Security Model
 
 1. **Network**: UFW firewall (ports 22, 80, 443 only)
-2. **Transport**: HTTPS via Cloudflare Origin Certs (recommended) or Let's Encrypt
-3. **Authentication**: Service-specific (Immich auth, Grafana auth)
+2. **Transport**: HTTPS via Let's Encrypt DNS-01 (auto-renewed; Cloudflare API token in traefik `.env`)
+3. **Authentication**: Authelia forward-auth SSO/MFA gateway
+   - Traefik dashboard, code-server: two-factor (TOTP)
+   - Grafana, Seafile web UI: one-factor (password)
+   - Immich, immich-public-proxy, Obsidian/CouchDB: bypassed (own auth or intentionally public)
 4. **Secrets**: `.env` files (gitignored, backed up to B2 encrypted bucket)
 5. **Infrastructure**: Cloud-init for repeatable provisioning
 

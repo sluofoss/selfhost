@@ -109,7 +109,14 @@ if ! docker network ls | grep -q "proxy"; then
     docker network create proxy
 fi
 
-# Step 2: Start Monitoring (optional infrastructure)
+# Step 2: Start Authelia (auth middleware — required before any protected service)
+if [ -d "$SCRIPT_DIR/authelia" ]; then
+    echo ""
+    echo "Step 2: Starting Authelia (auth middleware)..."
+    start_service "Authelia" "authelia"
+fi
+
+# Step 3: Start Monitoring (optional infrastructure)
 if [ -d "$SCRIPT_DIR/monitoring" ]; then
     echo ""
     read -p "Start monitoring services? (y/N): " start_monitoring
@@ -120,9 +127,9 @@ if [ -d "$SCRIPT_DIR/monitoring" ]; then
     fi
 fi
 
-# Step 3: Start Immich (application layer)
+# Step 4: Start Immich (application layer)
 echo ""
-echo "Step 2: Starting application (Immich)..."
+echo "Step 3: Starting application (Immich)..."
 start_service "Immich" "immich"
 
 # Step 4: Start Seafile (optional application layer)
@@ -164,16 +171,21 @@ echo -e "${GREEN}All services started successfully!${NC}"
 echo "======================================"
 echo ""
 echo "Access URLs:"
-echo "  - Traefik Dashboard: http://$(hostname -I | awk '{print $1}'):8080"
+echo "  - Traefik Dashboard: https://traefik.<your-domain> (requires Authelia 2FA)"
+echo "  - Authelia:          https://auth.<your-domain>"
 echo "  - Immich:            https://photos.<your-domain> (requires DNS setup)"
 echo "  - Grafana:           https://grafana.<your-domain> (if enabled)"
-echo "  - Seafile:           https://seafile.<your-domain> (if enabled)"
+echo "  - Seafile:           https://files.<your-domain> (if enabled)"
 echo "  - code-server:       https://vscode.<your-domain> (if enabled)"
 echo "  - TWS (trading):     https://tws.<your-domain> (if enabled)"
 echo ""
 echo "Service Status:"
 cd "$SCRIPT_DIR/traefik" && docker compose ps
 echo ""
+if [ -d "$SCRIPT_DIR/authelia" ] && [ -f "$SCRIPT_DIR/authelia/docker-compose.yml" ]; then
+    cd "$SCRIPT_DIR/authelia" && docker compose ps
+    echo ""
+fi
 cd "$SCRIPT_DIR/immich" && docker compose ps
 if [ -d "$SCRIPT_DIR/seafile" ] && [ -f "$SCRIPT_DIR/seafile/docker-compose.yml" ]; then
     echo ""

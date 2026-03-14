@@ -16,8 +16,8 @@ http:
       tls:
         certResolver: letsencrypt
       middlewares:
-        - auth@file
-    
+        - authelia@file
+
     grafana:
       rule: "Host(`grafana.${DOMAIN}`)"
       service: grafana
@@ -25,6 +25,8 @@ http:
         - websecure
       tls:
         certResolver: letsencrypt
+      middlewares:
+        - authelia@file
 
   services:
     immich:

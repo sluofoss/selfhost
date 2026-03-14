@@ -312,7 +312,12 @@ setup_docker_compose() {
     # Pull images for each service
     cd "$SERVER_DIR/traefik"
     docker compose pull
-    
+
+    if [ -d "$SERVER_DIR/authelia" ]; then
+        cd "$SERVER_DIR/authelia"
+        docker compose pull
+    fi
+
     cd "$SERVER_DIR/immich"
     docker compose pull
     
