@@ -1,6 +1,9 @@
 # private planning files
 workbench/*
 
+# Generated files (built from *.template at deploy time via envsubst)
+server/traefik/dynamic/routes.yml
+
 # OS files
 .DS_Store
 Thumbs.db
