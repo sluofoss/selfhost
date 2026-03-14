@@ -52,7 +52,7 @@ Useful for managing B2 backups from your local machine. Install from [rclone.org
 ### 1d. Clone This Repository
 
 ```bash
-git clone https://github.com/sluofoss/selfhost.git
+git clone https://github.com/your-username/selfhost.git
 cd selfhost
 ```
 

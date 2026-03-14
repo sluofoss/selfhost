@@ -1,6 +1,6 @@
 # Authentication Guide
 
-All browser-accessible services are gated by **Authelia** (`auth.sluofoss.com`) as the first layer.
+All browser-accessible services are gated by **Authelia** (`auth.yourdomain.com`) as the first layer.
 After an Authelia session is established, most services have their own second login screen.
 
 ---
@@ -9,19 +9,19 @@ After an Authelia session is established, most services have their own second lo
 
 When you visit a protected service without a session:
 1. Traefik intercepts the request and asks Authelia to verify
-2. Authelia redirects you to `auth.sluofoss.com`
+2. Authelia redirects you to `auth.yourdomain.com`
 3. You enter your Authelia username + password + TOTP code
-4. Authelia sets a session cookie for the `sluofoss.com` domain
+4. Authelia sets a session cookie for the `yourdomain.com` domain
 5. You are forwarded back to the service you originally requested
 
 The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
-`auth.sluofoss.com` ends the session for all protected services simultaneously.
+`auth.yourdomain.com` ends the session for all protected services simultaneously.
 
 ---
 
 ## Service-by-service breakdown
 
-### Authelia portal — `auth.sluofoss.com`
+### Authelia portal — `auth.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Purpose | Central session manager; not a service itself |
@@ -30,7 +30,7 @@ The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
 | Accounts | 1 per person — in `server/authelia/config/users_database.yml` |
 | Multi-user | Add a new entry to `users_database.yml`, assign `groups`; Authelia hot-reloads the file |
 
-### Traefik dashboard — `traefik.sluofoss.com`
+### Traefik dashboard — `traefik.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Login | Authelia only (two-factor) — no separate Traefik credential after migration |
@@ -38,7 +38,7 @@ The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
 | Accounts | 1 total (Authelia `sean`) |
 | Multi-user | Not designed for multiple operators; change `user:sean` to `group:admins` in `configuration.yml` to open it |
 
-### VSCode / code-server — `vscode.sluofoss.com`
+### VSCode / code-server — `vscode.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Login | Layer 1: Authelia two-factor; Layer 2: code-server `PASSWORD` env var (prompted each session) |
@@ -46,7 +46,7 @@ The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
 | Accounts | 1 Authelia account + 1 shared code-server password (not per-user) |
 | Multi-user | Not designed for multiple users; a single workspace with root-level file access |
 
-### Grafana — `grafana.sluofoss.com`
+### Grafana — `grafana.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Login | Layer 1: Authelia one-factor; Layer 2: Grafana's own login |
@@ -55,7 +55,7 @@ The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
 | Multi-user | Add Authelia account to `admins` group + create matching Grafana user |
 | Future | Grafana supports OIDC — can be configured to use Authelia as provider, eliminating the second login |
 
-### Seafile — `files.sluofoss.com`
+### Seafile — `files.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Login (browser) | Layer 1: Authelia one-factor; Layer 2: Seafile's own login |
@@ -65,7 +65,7 @@ The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
 | Multi-user | Seafile has full multi-user support (admin panel, org groups, shared libraries). Each user needs both an Authelia account and a Seafile account. Seafile admin can manage users independently of Authelia after they pass the first gate. |
 | Future | Seafile Pro supports OAuth2/OIDC — configuring Authelia as OIDC provider gives single-sign-on (one login for both) |
 
-### Immich — `photos.sluofoss.com`
+### Immich — `photos.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Login | Immich's own login only (email + password) |
@@ -73,9 +73,9 @@ The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
 | Why bypassed | Immich mobile apps use `Authorization: Bearer` token auth; Authelia's redirect-on-401 would break them |
 | Accounts | 1 Immich account per person — managed entirely within Immich admin panel |
 | Multi-user | Full native multi-user: admin creates accounts, sets roles (admin/viewer), controls library sharing |
-| Public shares | Share links work via `share.sluofoss.com` (see below) — no login required for viewers |
+| Public shares | Share links work via `share.yourdomain.com` (see below) — no login required for viewers |
 
-### Immich public share proxy — `share.sluofoss.com`
+### Immich public share proxy — `share.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Login | None — intentionally public |
@@ -84,7 +84,7 @@ The Authelia session lasts 12 hours (inactivity timeout: 1 hour). Logging out at
 | Accounts | No account needed to view shared content |
 | Multi-user | Works for any valid Immich share link regardless of who created it |
 
-### CouchDB / Obsidian LiveSync — `obsidian.sluofoss.com`
+### CouchDB / Obsidian LiveSync — `obsidian.yourdomain.com`
 | Field | Detail |
 |---|---|
 | Login | CouchDB HTTP Basic Auth embedded in the Obsidian LiveSync plugin settings |

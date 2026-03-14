@@ -3,7 +3,7 @@ tls:
     default: {}
   # The Cloudflare Origin cert (15-year wildcard) was previously set as the
   # defaultCertificate here. It was removed because it was blocking ACME DNS-01
-  # cert issuance — Traefik saw *.sluofoss.com covered and skipped Let's Encrypt.
+  # cert issuance — Traefik saw *.example.com covered and skipped Let's Encrypt.
   # Let's Encrypt certs are now the primary source for all domains.
   # To restore the Origin cert as a fallback (e.g. after a full re-provision
   # before ACME runs), uncomment below:

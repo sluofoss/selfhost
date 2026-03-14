@@ -1,7 +1,7 @@
 # Attack Surface Analysis - Selfhost Infrastructure
 
 **Analysis Date**: March 8, 2026  
-**Repository**: selfhost (sluofoss/selfhost)  
+**Repository**: selfhost (your-username/selfhost)  
 **Scope**: Web-exposed services and publicly accessible infrastructure
 
 ---
@@ -11,15 +11,15 @@
 Your self-hosted infrastructure exposes **3 primary web services** through Traefik reverse proxy. The attack surface is **relatively well-controlled** with HTTPS enforcement, middleware protection, and proper network isolation. However, several security concerns and opportunities for hardening have been identified.
 
 **Current Public Exposure:**
-- ✅ **photos.sluofoss.com** (Immich photo library)
-- ✅ **grafana.sluofoss.com** (Monitoring dashboard)
-- ⚠️ **traefik.sluofoss.com** (Admin dashboard)
+- ✅ **photos.example.com** (Immich photo library)
+- ✅ **grafana.example.com** (Monitoring dashboard)
+- ⚠️ **traefik.example.com** (Admin dashboard)
 
 ---
 
 ## 1. PRIMARY WEB-EXPOSED SERVICES
 
-### A. Immich Photo Library (`photos.sluofoss.com`)
+### A. Immich Photo Library (`photos.example.com`)
 
 **Service**: `immich_server:2283`  
 **Protocol**: HTTPS only (port 443)  
@@ -57,7 +57,7 @@ Your self-hosted infrastructure exposes **3 primary web services** through Traef
 
 ---
 
-### B. Grafana Monitoring Dashboard (`grafana.sluofoss.com`)
+### B. Grafana Monitoring Dashboard (`grafana.example.com`)
 
 **Service**: `grafana:3000`  
 **Protocol**: HTTPS only (port 443)  
@@ -112,7 +112,7 @@ environment:
 
 ---
 
-### C. Traefik Dashboard (`traefik.sluofoss.com`)
+### C. Traefik Dashboard (`traefik.example.com`)
 
 **Service**: `api@internal` (Traefik's built-in dashboard)  
 **Protocol**: HTTPS only (port 443)  
@@ -261,8 +261,8 @@ TRAEFIK_PASSWORD='$apr1$g57Z7kvO$21xJq4o8eQqLLjWidhKld0'
 
 #### b) **Email Address** (Public in repo)
 ```
-ACME_EMAIL=sluofoss@gmail.com
-DOMAIN=sluofoss.com
+ACME_EMAIL=user@example.com
+DOMAIN=example.com
 ```
 
 - **Status**: Discoverable

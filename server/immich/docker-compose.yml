@@ -98,7 +98,7 @@ services:
       - default
 
   # immich-public-proxy: serves Immich public share links without auth.
-  # Required before grey-clouding photos.sluofoss.com (WB 21).
+  # Required before grey-clouding the photos subdomain in Cloudflare (WB 21).
   #
   # IMPORTANT: Pin this image to a version compatible with the running Immich release.
   # Check the compatibility table at: https://github.com/alangrainger/immich-public-proxy

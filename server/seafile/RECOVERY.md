@@ -10,7 +10,7 @@ After `docker compose up -d` completes its first initialisation, Seahub does
 # Run once after the first successful init (container logs show "Seahub is started")
 docker exec seafile sh -c '
   grep -q SERVICE_URL /shared/seafile/conf/seahub_settings.py || \
-  printf "\nSERVICE_URL = \"https://seafile.sluofoss.com\"\nFILE_SERVER_ROOT = \"https://seafile.sluofoss.com/seafhttp\"\n" \
+  printf "\nSERVICE_URL = \"https://${SEAFILE_HOSTNAME}\"\nFILE_SERVER_ROOT = \"https://${SEAFILE_HOSTNAME}/seafhttp\"\n" \
     >> /shared/seafile/conf/seahub_settings.py
 '
 docker compose restart seafile

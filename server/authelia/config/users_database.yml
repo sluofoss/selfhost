@@ -6,7 +6,7 @@
 #   docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password 'yourpassword'
 # Then replace the 'password:' value below with the output.
 #
-# To add TOTP: after Authelia is running, visit https://auth.sluofoss.com
+# To add TOTP: after Authelia is running, visit https://auth.<your-domain>
 # and log in — you will be prompted to register a TOTP device on first login.
 
 users:
@@ -15,6 +15,6 @@ users:
     # Placeholder — must be replaced before deploying.
     # Generate with: docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password 'yourpassword'
     password: "REPLACE_WITH_ARGON2_HASH"
-    email: sluofoss@gmail.com
+    email: user@example.com
     groups:
       - admins
