@@ -32,7 +32,7 @@ services:
       GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - default
       - proxy
