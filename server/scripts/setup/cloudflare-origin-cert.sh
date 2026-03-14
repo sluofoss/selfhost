@@ -75,7 +75,9 @@ update_traefik_config() {
     # Backup original config
     cp "$TRAEFIK_DIR/traefik.yml" "$TRAEFIK_DIR/traefik.yml.backup.$(date +%Y%m%d)"
     
-    # Update traefik.yml to use origin certificates
+    # Update traefik.yml — keeps DNS-01 challenge and removes the legacy static
+    # cert injection from the entrypoint (the Origin cert is now served as the
+    # TLS store defaultCertificate via dynamic/certs.yml instead).
     cat > "$TRAEFIK_DIR/traefik.yml" << TRAEFIK_CONFIG
 global:
   checkNewVersion: false
@@ -102,18 +104,15 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
-    http:
-      tls:
-        certificates:
-          - certFile: /certs/origin-cert.pem
-            keyFile: /certs/origin-key.pem
 
 certificatesResolvers:
   letsencrypt:
     acme:
       email: \${ACME_EMAIL}
       storage: /letsencrypt/acme.json
-      tlsChallenge: {}
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 10
 
 log:
   level: INFO
@@ -137,9 +136,9 @@ TRAEFIK_CONFIG
     fi
     
     echo -e "${GREEN}✓${NC} Traefik configuration updated"
-    echo -e "${YELLOW}!${NC} Traefik will use Cloudflare Origin Certificate (15-year validity)"
+    echo -e "${YELLOW}!${NC} Origin cert saved to traefik/certs/ and served as the TLS store default via dynamic/certs.yml"
     echo ""
-    echo "Note: Let's Encrypt resolver is still configured as fallback"
+    echo "Note: Let's Encrypt DNS-01 is the primary cert resolver; Origin cert is the fallback default"
 }
 
 # Check for existing cert in B2 (recreation scenario)

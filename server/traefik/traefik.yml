@@ -27,9 +27,11 @@ entryPoints:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: ${ACME_EMAIL}
+      # email is set via --certificatesresolvers.letsencrypt.acme.email in docker-compose.yml
       storage: /letsencrypt/acme.json
-      tlsChallenge: {}
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 10
 
 log:
   level: INFO
