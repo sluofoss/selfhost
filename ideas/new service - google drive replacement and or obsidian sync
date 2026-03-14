@@ -1,0 +1,6 @@
+goal:
+
+- replace google drive and backup my files to the cloud (aka b2) and have the ability to sync and view files just like in google drive.
+- use as little memory and cpu footprint as possible, so ideally nothing heavy
+- works on mobile (ios, android) and desktop (linux, windows, mac)
+
