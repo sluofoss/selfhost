@@ -50,38 +50,6 @@ services:
     labels:
       - "traefik.enable=false"
 
-  filebrowser:
-    image: filebrowser/filebrowser:latest
-    container_name: devtools_filebrowser
-    environment:
-      FB_NOAUTH: "true"
-      PUID: ${DEVTOOLS_PUID:-1000}
-      PGID: ${DEVTOOLS_PGID:-1000}
-    command:
-      - "--address"
-      - "0.0.0.0"
-      - "--port"
-      - "80"
-      - "--database"
-      - "/config/filebrowser.db"
-      - "--root"
-      - "/srv"
-    restart: unless-stopped
-    mem_limit: 512m
-    mem_reservation: 128m
-    volumes:
-      - ${DEVTOOLS_PROJECTS_PATH:-/data/devtools/projects}:/srv
-      - ${FILEBROWSER_DATA_PATH:-/data/devtools/filebrowser}:/config
-    networks:
-      - default
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.devtools-filebrowser.rule=Host(`files.${DOMAIN}`)"
-      - "traefik.http.routers.devtools-filebrowser.entrypoints=websecure"
-      - "traefik.http.routers.devtools-filebrowser.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.devtools-filebrowser.middlewares=auth@file"
-      - "traefik.http.services.devtools-filebrowser.loadbalancer.server.port=80"
 
 networks:
   default:

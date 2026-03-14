@@ -130,7 +130,7 @@ if [ -d "$SCRIPT_DIR/devtools" ]; then
     echo ""
     read -p "Start devtools services? (y/N): " start_devtools
     if [[ $start_devtools =~ ^[Yy]$ ]]; then
-        start_service "Devtools (code-server + Ollama + FileBrowser)" "devtools"
+        start_service "Devtools (code-server + Ollama)" "devtools"
     else
         echo -e "${YELLOW}!${NC} Skipping devtools"
     fi
@@ -146,7 +146,6 @@ echo "  - Traefik Dashboard: http://$(hostname -I | awk '{print $1}'):8080"
 echo "  - Immich:            https://photos.<your-domain> (requires DNS setup)"
 echo "  - Grafana:           https://grafana.<your-domain> (if enabled)"
 echo "  - code-server:       https://vscode.<your-domain> (if enabled)"
-echo "  - FileBrowser:       https://files.<your-domain> (if enabled)"
 echo ""
 echo "Service Status:"
 cd "$SCRIPT_DIR/traefik" && docker compose ps

@@ -121,7 +121,7 @@ create_directories() {
     
     # Main data directories (avoid brace expansion issues)
     sudo mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/rclone-cache /data/immich/ml-cache /data/immich/postgres /data/immich/b2-mount
-    sudo mkdir -p /data/devtools/projects /data/devtools/code-server /data/devtools/filebrowser /data/devtools/ollama
+    sudo mkdir -p /data/devtools/projects /data/devtools/code-server /data/devtools/ollama
     sudo mkdir -p /data/backups/postgres /data/backups/configs /data/backups/weekly
     sudo mkdir -p /data/monitoring
     
