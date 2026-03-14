@@ -24,6 +24,7 @@ services:
       - "traefik.http.routers.devtools-code-server.entrypoints=websecure"
       - "traefik.http.routers.devtools-code-server.tls.certresolver=letsencrypt"
       - "traefik.http.services.devtools-code-server.loadbalancer.server.port=8080"
+      - "traefik.http.routers.devtools-code-server.middlewares=authelia@file"
 
   ollama:
     image: ollama/ollama:latest

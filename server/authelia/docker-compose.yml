@@ -1,0 +1,31 @@
+name: authelia
+
+networks:
+  proxy:
+    name: proxy
+    external: true
+
+services:
+  authelia:
+    image: authelia/authelia:4
+    container_name: authelia
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Map .env's short name to Authelia's v4.38+ expected env var name.
+      # JWT_SECRET in .env is the shared secret for identity tokens.
+      - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET=${JWT_SECRET}
+      # Session and storage secrets are provided directly via env_file
+    volumes:
+      - ./config:/config
+    expose:
+      - "9091"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`auth.${DOMAIN}`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls.certresolver=letsencrypt"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"

@@ -12,7 +12,7 @@ services:
   immich-server:
     container_name: immich_server
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
-    # user: 1000:1000 # Uncomment to run as non-root user
+    user: 1000:1000
     volumes:
       # Upload location points to B2 rclone FUSE mount (originals stored in B2)
       - ${UPLOAD_LOCATION}:/usr/src/app/upload
@@ -96,6 +96,32 @@ services:
     restart: always
     networks:
       - default
+
+  # immich-public-proxy: serves Immich public share links without auth.
+  # Required before grey-clouding photos.sluofoss.com (WB 21).
+  #
+  # IMPORTANT: Pin this image to a version compatible with the running Immich release.
+  # Check the compatibility table at: https://github.com/alangrainger/immich-public-proxy
+  # Do NOT run both immich-server and this proxy on floating :latest or :release.
+  immich-public-proxy:
+    container_name: immich_public_proxy
+    image: alangrainger/immich-public-proxy:latest
+    restart: unless-stopped
+    environment:
+      IMMICH_URL: "http://immich-server:2283"
+    expose:
+      - "3000"
+    depends_on:
+      - immich-server
+    networks:
+      - default
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.immich-public.rule=Host(`${IMMICH_SHARE_DOMAIN}`)"
+      - "traefik.http.routers.immich-public.entrypoints=websecure"
+      - "traefik.http.routers.immich-public.tls.certresolver=letsencrypt"
+      - "traefik.http.services.immich-public.loadbalancer.server.port=3000"
 
 networks:
   default:

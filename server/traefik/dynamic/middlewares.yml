@@ -1,11 +1,26 @@
 http:
   middlewares:
+    # Basic auth — used as fallback while Authelia is being rolled out.
+    # Once Authelia is confirmed working on all admin surfaces, this can be removed.
     auth:
       basicAuth:
         users:
           # Dynamic file config uses Traefik Go templates, not ${VAR} expansion.
           - 'admin:{{ env "TRAEFIK_PASSWORD" }}'
-    
+
+    # Authelia forward-auth middleware.
+    # Used by any router that should require Authelia authentication.
+    # Reference as: authelia@file
+    authelia:
+      forwardAuth:
+        address: "http://authelia:9091/api/authz/forward-auth"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - Remote-User
+          - Remote-Groups
+          - Remote-Name
+          - Remote-Email
+
     security-headers:
       headers:
         frameDeny: true

@@ -1,0 +1,130 @@
+---
+# Authelia configuration for sluofoss.com
+# Docs: https://www.authelia.com/configuration/prologue/introduction/
+
+server:
+  address: "tcp://0.0.0.0:9091/"
+
+log:
+  level: info
+
+theme: dark
+
+# TOTP settings — issuer name shown in authenticator apps
+totp:
+  issuer: sluofoss.com
+  period: 30
+  skew: 1
+
+# Identity validation (password reset & device registration links)
+# jwt_secret is provided via AUTHELIA_JWT_SECRET env var
+
+# Flat-file user database (see users_database.yml)
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    watch: true
+    password:
+      algorithm: argon2id
+      argon2:
+        variant: argon2id
+        iterations: 3
+        memory: 65536
+        parallelism: 4
+        key_length: 32
+        salt_length: 16
+
+# Access control
+# Evaluated top-to-bottom; first matching rule wins.
+access_control:
+  default_policy: deny
+  rules:
+    # Authelia portal itself — must be bypassed or it recursively auth-gates itself
+    - domain: auth.sluofoss.com
+      policy: bypass
+
+    # Immich: owns its own auth layer; mobile apps use Bearer tokens incompatible
+    # with forward-auth redirects — keep fully bypassed
+    - domain: photos.sluofoss.com
+      policy: bypass
+
+    # immich-public-proxy: serves public share links, intentionally no auth
+    - domain: share.sluofoss.com
+      policy: bypass
+
+    # CouchDB / Obsidian LiveSync: uses HTTP Basic Auth internally — must not
+    # have forward-auth; placed on dedicated subdomain completely bypassed
+    - domain: obsidian.sluofoss.com
+      policy: bypass
+
+    # Navidrome Subsonic API: mobile music clients use HTTP Basic Auth on /rest/
+    # and /share/ — bypass those paths, protect the web UI
+    - domain: music.sluofoss.com
+      resources:
+        - "^/rest(/.*)?$"
+        - "^/share(/.*)?$"
+        - "^/index.m3u(/.*)?$"
+      policy: bypass
+
+    # Seafile API and sync paths: desktop/mobile clients use token auth on these
+    # endpoints — bypass them, protect only the web UI
+    - domain: files.sluofoss.com
+      resources:
+        - "^/api(/.*)?$"
+        - "^/api2(/.*)?$"
+        - "^/seafhttp(/.*)?$"
+        - "^/seafdav(/.*)?$"
+      policy: bypass
+
+    # Admin-only surfaces: two-factor required
+    - domain: traefik.sluofoss.com
+      subject: "user:sean"
+      policy: two_factor
+
+    - domain: vscode.sluofoss.com
+      subject: "user:sean"
+      policy: two_factor
+
+    # Grafana: one-factor for admins group
+    - domain: grafana.sluofoss.com
+      subject: "group:admins"
+      policy: one_factor
+
+    # Seafile web UI: one-factor for any authenticated user
+    - domain: files.sluofoss.com
+      policy: one_factor
+
+    # Navidrome web UI: one-factor for any authenticated user
+    - domain: music.sluofoss.com
+      policy: one_factor
+
+# Session management
+# secret is provided via AUTHELIA_SESSION_SECRET env var
+session:
+  cookies:
+    - name: authelia_session
+      domain: sluofoss.com
+      authelia_url: "https://auth.sluofoss.com"
+      same_site: lax
+      expiration: 12h
+      inactivity: 1h
+      remember_me: 7d
+
+# Rate limiting — ban after 3 failed attempts in 2 minutes
+regulation:
+  max_retries: 3
+  find_time: 2m
+  ban_time: 10m
+
+# Storage: SQLite (simple, no extra container; sufficient for personal server)
+# encryption_key is provided via AUTHELIA_STORAGE_ENCRYPTION_KEY env var
+storage:
+  local:
+    path: /config/db.sqlite3
+
+# Notifier: write to file (no SMTP needed)
+# Check /config/notification.txt for password reset / TOTP registration links
+notifier:
+  disable_startup_check: false
+  filesystem:
+    filename: /config/notification.txt
