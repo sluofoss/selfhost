@@ -43,6 +43,7 @@ nano .env              # B2 credentials, domain
 nano traefik/.env      # ACME email, dashboard password
 nano immich/.env       # DB password, domain
 nano monitoring/.env   # Grafana credentials
+nano devtools/.env     # code-server password, paths, and Ollama settings (optional)
 
 # 4. Run post-config setup
 ./scripts/setup/install.sh
