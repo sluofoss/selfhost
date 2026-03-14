@@ -1,0 +1,79 @@
+name: seafile
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: seafile_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${INIT_SEAFILE_MYSQL_ROOT_PASSWORD}
+      MYSQL_LOG_BIN: 1
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_general_ci
+    volumes:
+      - ${SEAFILE_MYSQL_DATA:-/data/seafile/mysql}:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--mariadbupgrade", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    mem_limit: 512m
+    networks:
+      - default
+
+  redis:
+    image: redis:7
+    container_name: seafile_redis
+    command: redis-server --requirepass ${SEAFILE_REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${SEAFILE_REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - default
+
+  seafile:
+    image: seafileltd/seafile-pro-mc:13.0-latest
+    container_name: seafile
+    volumes:
+      - ${SEAFILE_DATA:-/data/seafile/share}:/shared
+    env_file: .env
+    environment:
+      DB_HOST: db
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      SEAFILE_SERVER_PROTOCOL: https
+      CACHE_PROVIDER: redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 60s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    restart: unless-stopped
+    mem_limit: 2g
+    mem_reservation: 512m
+    networks:
+      - default
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.seafile.rule=Host(`${SEAFILE_HOSTNAME}`)"
+      - "traefik.http.routers.seafile.entrypoints=websecure"
+      - "traefik.http.routers.seafile.tls.certresolver=letsencrypt"
+      - "traefik.http.services.seafile.loadbalancer.server.port=80"
+
+networks:
+  default:
+  proxy:
+    external: true
+    name: proxy

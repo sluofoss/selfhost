@@ -125,7 +125,18 @@ echo ""
 echo "Step 2: Starting application (Immich)..."
 start_service "Immich" "immich"
 
-# Step 4: Start Devtools (optional application layer)
+# Step 4: Start Seafile (optional application layer)
+if [ -d "$SCRIPT_DIR/seafile" ]; then
+    echo ""
+    read -p "Start Seafile services? (y/N): " start_seafile
+    if [[ $start_seafile =~ ^[Yy]$ ]]; then
+        start_service "Seafile (file sync)" "seafile"
+    else
+        echo -e "${YELLOW}!${NC} Skipping Seafile"
+    fi
+fi
+
+# Step 5: Start Devtools (optional application layer)
 if [ -d "$SCRIPT_DIR/devtools" ]; then
     echo ""
     read -p "Start devtools services? (y/N): " start_devtools
@@ -145,12 +156,17 @@ echo "Access URLs:"
 echo "  - Traefik Dashboard: http://$(hostname -I | awk '{print $1}'):8080"
 echo "  - Immich:            https://photos.<your-domain> (requires DNS setup)"
 echo "  - Grafana:           https://grafana.<your-domain> (if enabled)"
+echo "  - Seafile:           https://seafile.<your-domain> (if enabled)"
 echo "  - code-server:       https://vscode.<your-domain> (if enabled)"
 echo ""
 echo "Service Status:"
 cd "$SCRIPT_DIR/traefik" && docker compose ps
 echo ""
 cd "$SCRIPT_DIR/immich" && docker compose ps
+if [ -d "$SCRIPT_DIR/seafile" ] && [ -f "$SCRIPT_DIR/seafile/docker-compose.yml" ]; then
+    echo ""
+    cd "$SCRIPT_DIR/seafile" && docker compose ps
+fi
 if [ -d "$SCRIPT_DIR/devtools" ] && [ -f "$SCRIPT_DIR/devtools/docker-compose.yml" ]; then
     echo ""
     cd "$SCRIPT_DIR/devtools" && docker compose ps

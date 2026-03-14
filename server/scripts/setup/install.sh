@@ -122,6 +122,7 @@ create_directories() {
     # Main data directories (avoid brace expansion issues)
     sudo mkdir -p /data/immich/thumbnails /data/immich/cache /data/immich/rclone-cache /data/immich/ml-cache /data/immich/postgres /data/immich/b2-mount
     sudo mkdir -p /data/devtools/projects /data/devtools/code-server /data/devtools/ollama
+    sudo mkdir -p /data/seafile/share /data/seafile/mysql
     sudo mkdir -p /data/backups/postgres /data/backups/configs /data/backups/weekly
     sudo mkdir -p /data/monitoring
     
@@ -254,9 +255,11 @@ setup_cron() {
             | grep -v -F "# Daily database backup at 2:00 AM" \
             | grep -v -F "# Hourly config backup" \
             | grep -v -F "# Weekly bounded backup on Sundays at 3:00 AM" \
+            | grep -v -F "# Hourly Seafile MariaDB backup" \
             | grep -v -F "$SERVER_DIR/scripts/backup/backup-postgres.sh" \
             | grep -v -F "$SERVER_DIR/scripts/backup/backup-configs.sh" \
             | grep -v -F "$SERVER_DIR/scripts/backup/backup-weekly.sh" \
+            | grep -v -F "$SERVER_DIR/scripts/backup/backup-seafile-db.sh" \
             || true
     )"
 
@@ -272,6 +275,9 @@ setup_cron() {
 
 # Weekly bounded backup on Sundays at 3:00 AM
 0 3 * * 0 $SERVER_DIR/scripts/backup/backup-weekly.sh >> $SERVER_DIR/logs/weekly-backup.log 2>&1
+
+# Hourly Seafile MariaDB backup (critical — stale DB + GC = data loss)
+30 * * * * $SERVER_DIR/scripts/backup/backup-seafile-db.sh >> $SERVER_DIR/logs/seafile-db-backup.log 2>&1
 EOF
     } | crontab -
     
@@ -296,6 +302,11 @@ setup_docker_compose() {
     
     if [ -d "$SERVER_DIR/monitoring" ]; then
         cd "$SERVER_DIR/monitoring"
+        docker compose pull
+    fi
+
+    if [ -d "$SERVER_DIR/seafile" ]; then
+        cd "$SERVER_DIR/seafile"
         docker compose pull
     fi
 
