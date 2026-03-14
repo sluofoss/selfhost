@@ -1,5 +1,27 @@
 # Seafile Pro: Disaster Recovery Runbook
 
+## First Deploy Checklist
+
+After `docker compose up -d` completes its first initialisation, Seahub does
+**not** know the external URL.  File upload/download links will resolve to
+`http://127.0.0.1:8082/...` until you patch the config once and restart.
+
+```bash
+# Run once after the first successful init (container logs show "Seahub is started")
+docker exec seafile sh -c '
+  grep -q SERVICE_URL /shared/seafile/conf/seahub_settings.py || \
+  printf "\nSERVICE_URL = \"https://seafile.sluofoss.com\"\nFILE_SERVER_ROOT = \"https://seafile.sluofoss.com/seafhttp\"\n" \
+    >> /shared/seafile/conf/seahub_settings.py
+'
+docker compose restart seafile
+```
+
+The conf directory is inside the persistent volume (`/data/seafile/share/seafile/conf/`),
+so this change survives container recreates.  It only needs to be re-applied if
+the entire volume is wiped.
+
+---
+
 ## Overview
 
 Seafile stores **all file content** in three B2 buckets (`sluo-seafile-commits`,
