@@ -23,14 +23,21 @@ entryPoints:
           scheme: https
     transport:
       respondingTimeouts:
-        # Disable 60s default so large file uploads (videos 100MB+) are not
-        # cut off mid-transfer (ECONNRESET / errno=104 on clients).
+        # readTimeout=0 disables Traefik's 60 s default request-body read timeout.
+        # Without this, large file uploads (e.g. 362 MB Dolby video from Immich Android)
+        # that take >60 s to transfer are cut off with ECONNRESET (errno=104) on the client
+        # and a 504 Gateway Timeout in Traefik access logs at exactly 60 000 ms.
+        # Note: this must be set here in traefik.yml, NOT as a CLI flag in docker-compose.yml.
+        # Traefik builds entrypoints from the static config file first; CLI transport overlays
+        # for file-defined entrypoints are silently dropped (confirmed 2026-03-14, v2.11.31).
+        # Verified fixed: 362 MB / 247 MB / 84 MB Dolby MP4s uploaded successfully from
+        # Immich Android at 11:36 UTC 2026-03-14; zero 504@60000ms entries since 11:20 UTC.
         readTimeout: 0
   websecure:
     address: ":443"
     transport:
       respondingTimeouts:
-        readTimeout: 0
+        readTimeout: 0  # same reason as web above; must be set on both entrypoints
 
 certificatesResolvers:
   letsencrypt:
