@@ -12,6 +12,10 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     env_file:
       - .env
     command:
@@ -55,6 +59,11 @@ services:
     image: busybox:latest
     container_name: busybox-monitor
     restart: always
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
     command: >
       sh -c "while true; do
         echo \"[\$$(date)] Health check - Instance active\";

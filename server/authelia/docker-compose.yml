@@ -10,6 +10,11 @@ services:
     image: authelia/authelia:4
     container_name: authelia
     restart: unless-stopped
+    user: "65534:65534"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     env_file:
       - .env
     environment:

@@ -4,6 +4,8 @@ services:
   db:
     image: mariadb:10.11
     container_name: seafile_db
+    security_opt:
+      - no-new-privileges:true
     environment:
       MYSQL_ROOT_PASSWORD: ${INIT_SEAFILE_MYSQL_ROOT_PASSWORD}
       MYSQL_LOG_BIN: 1
@@ -25,6 +27,11 @@ services:
   redis:
     image: redis:7
     container_name: seafile_redis
+    user: "999:999"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     command: redis-server --requirepass ${SEAFILE_REDIS_PASSWORD}
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${SEAFILE_REDIS_PASSWORD}", "ping"]
@@ -39,6 +46,8 @@ services:
   seafile:
     image: seafileltd/seafile-pro-mc:13.0-latest
     container_name: seafile
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ${SEAFILE_DATA:-/data/seafile/share}:/shared
     env_file: .env
