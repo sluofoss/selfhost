@@ -21,8 +21,16 @@ entryPoints:
         entryPoint:
           to: websecure
           scheme: https
+    transport:
+      respondingTimeouts:
+        # Disable 60s default so large file uploads (videos 100MB+) are not
+        # cut off mid-transfer (ECONNRESET / errno=104 on clients).
+        readTimeout: 0
   websecure:
     address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: 0
 
 certificatesResolvers:
   letsencrypt:
