@@ -125,6 +125,7 @@ create_directories() {
     sudo mkdir -p /data/seafile/share /data/seafile/mysql
     sudo mkdir -p /data/backups/postgres /data/backups/configs /data/backups/weekly
     sudo mkdir -p /data/monitoring
+    sudo mkdir -p /data/trading/timescaledb /data/trading/tws-settings /data/trading/parquet/ohlcv /data/trading/parquet/tick /data/trading/logs
     
     # Ensure FUSE is configured for B2 mount
     if ! grep -q "^user_allow_other" /etc/fuse.conf; then
@@ -256,10 +257,16 @@ setup_cron() {
             | grep -v -F "# Hourly config backup" \
             | grep -v -F "# Weekly bounded backup on Sundays at 3:00 AM" \
             | grep -v -F "# Hourly Seafile MariaDB backup" \
+            | grep -v -F "# Daily trading Parquet export" \
+            | grep -v -F "# Daily trading Parquet B2 sync" \
+            | grep -v -F "# Weekly trading data integrity check" \
             | grep -v -F "$SERVER_DIR/scripts/backup/backup-postgres.sh" \
             | grep -v -F "$SERVER_DIR/scripts/backup/backup-configs.sh" \
             | grep -v -F "$SERVER_DIR/scripts/backup/backup-weekly.sh" \
             | grep -v -F "$SERVER_DIR/scripts/backup/backup-seafile-db.sh" \
+            | grep -v -F "$SERVER_DIR/scripts/trading/export-parquet.sh" \
+            | grep -v -F "$SERVER_DIR/scripts/trading/sync-trading-b2.sh" \
+            | grep -v -F "$SERVER_DIR/scripts/trading/verify-trading-data.sh" \
             || true
     )"
 
@@ -278,6 +285,15 @@ setup_cron() {
 
 # Hourly Seafile MariaDB backup (critical — stale DB + GC = data loss)
 30 * * * * $SERVER_DIR/scripts/backup/backup-seafile-db.sh >> $SERVER_DIR/logs/seafile-db-backup.log 2>&1
+
+# Daily trading Parquet export at 4:00 AM (after bars are collected)
+0 4 * * * $SERVER_DIR/scripts/trading/export-parquet.sh >> $SERVER_DIR/logs/trading-parquet-export.log 2>&1
+
+# Daily trading Parquet B2 sync at 5:00 AM (after export)
+0 5 * * * $SERVER_DIR/scripts/trading/sync-trading-b2.sh >> $SERVER_DIR/logs/trading-b2-sync.log 2>&1
+
+# Weekly trading data integrity check on Sundays at 6:00 AM
+0 6 * * 0 $SERVER_DIR/scripts/trading/verify-trading-data.sh >> $SERVER_DIR/logs/trading-verify.log 2>&1
 EOF
     } | crontab -
     
@@ -312,6 +328,11 @@ setup_docker_compose() {
 
     if [ -d "$SERVER_DIR/devtools" ]; then
         cd "$SERVER_DIR/devtools"
+        docker compose pull
+    fi
+
+    if [ -d "$SERVER_DIR/trading" ]; then
+        cd "$SERVER_DIR/trading"
         docker compose pull
     fi
     

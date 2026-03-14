@@ -31,45 +31,59 @@ log() {
 
 log "Starting PostgreSQL backup..."
 
-# Check if PostgreSQL is running
+# ─── Immich PostgreSQL ────────────────────────────────────────────────────────
+
 if ! docker exec immich_postgres pg_isready -U postgres > /dev/null 2>&1; then
-    log "✗ PostgreSQL not running, skipping backup"
-    exit 1
+    log "⚠ immich_postgres not running, skipping Immich backup"
+else
+    DATABASES=(immich)
+    for db in "${DATABASES[@]}"; do
+        if ! docker exec immich_postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "$db"; then
+            log "⚠ Database '$db' does not exist on immich_postgres, skipping"
+            continue
+        fi
+
+        BACKUP_FILE="${BACKUP_DIR}/${db}_${DATE}.sql.gz"
+        log "Backing up database: $db (immich_postgres)"
+        docker exec immich_postgres pg_dump -U postgres "$db" | gzip > "$BACKUP_FILE"
+
+        if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
+            SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+            log "✓ Backup created: $BACKUP_FILE ($SIZE)"
+            if command -v rclone &> /dev/null; then
+                rclone copy "$BACKUP_FILE" "backblaze:${B2_BUCKET}/${B2_PATH}/"
+                log "✓ Synced $db to B2"
+            fi
+        else
+            log "✗ Backup failed for database: $db"
+        fi
+    done
 fi
 
-# Databases to back up (add more as services are deployed)
-DATABASES=(immich)
+# ─── Trading TimescaleDB ──────────────────────────────────────────────────────
 
-# Create backup for each database
-for db in "${DATABASES[@]}"; do
-    # Check if database exists before backing up
-    if ! docker exec immich_postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "$db"; then
-        log "⚠ Database '$db' does not exist, skipping"
-        continue
-    fi
-
-    BACKUP_FILE="${BACKUP_DIR}/${db}_${DATE}.sql.gz"
-    
-    log "Backing up database: $db"
-    
-    # Create backup
-    docker exec immich_postgres pg_dump -U postgres "$db" | gzip > "$BACKUP_FILE"
-    
-    # Verify backup
-    if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
-        SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
-        log "✓ Backup created: $BACKUP_FILE ($SIZE)"
-        
-        # Sync to B2
-        if command -v rclone &> /dev/null; then
-            log "Syncing to B2..."
-            rclone copy "$BACKUP_FILE" "backblaze:${B2_BUCKET}/${B2_PATH}/"
-            log "✓ Synced to B2"
-        fi
+if docker inspect trading_timescaledb > /dev/null 2>&1; then
+    if ! docker exec trading_timescaledb pg_isready -U trading > /dev/null 2>&1; then
+        log "⚠ trading_timescaledb not ready, skipping trading backup"
     else
-        log "✗ Backup failed for database: $db"
+        TRADING_BACKUP_FILE="${BACKUP_DIR}/trading_${DATE}.sql.gz"
+        log "Backing up database: trading (trading_timescaledb)"
+        docker exec trading_timescaledb pg_dump -U trading trading | gzip > "$TRADING_BACKUP_FILE"
+
+        if [ -f "$TRADING_BACKUP_FILE" ] && [ -s "$TRADING_BACKUP_FILE" ]; then
+            SIZE=$(du -h "$TRADING_BACKUP_FILE" | cut -f1)
+            log "✓ Backup created: $TRADING_BACKUP_FILE ($SIZE)"
+            if command -v rclone &> /dev/null; then
+                rclone copy "$TRADING_BACKUP_FILE" "backblaze:${B2_BUCKET}/${B2_PATH}/"
+                log "✓ Synced trading to B2"
+            fi
+        else
+            log "✗ Backup failed for database: trading"
+        fi
     fi
-done
+else
+    log "trading_timescaledb not found, skipping trading backup (stack not deployed)"
+fi
 
 # Cleanup old backups (local)
 log "Cleaning up old local backups (older than $RETENTION_DAYS days)..."

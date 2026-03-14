@@ -1,0 +1,157 @@
+name: trading
+
+services:
+  # Full Trader Workstation — handles IBKR auth, exposes API socket and KasmVNC browser GUI.
+  # First-time login: open https://tws.${DOMAIN} in browser, complete IBKR login via KasmVNC.
+  # After first login TWS maintains auto-reconnect; API socket becomes available to other services.
+  tws:
+    image: ghcr.io/gnzsnz/tws-rdesktop:latest
+    container_name: trading_tws
+    env_file:
+      - .env
+    environment:
+      TWS_USERID: ${TWS_USERID}
+      TWS_PASSWORD: ${TWS_PASSWORD}
+      TRADING_MODE: ${TRADING_MODE:-paper}
+      # Accept the IBKR license automatically (required for unattended restarts)
+      ACCEPT_LICENSE: "yes"
+      TZ: ${TZ:-UTC}
+      PUID: "1000"
+      PGID: "1000"
+    shm_size: 1gb
+    mem_limit: 2g
+    mem_reservation: 1g
+    volumes:
+      - ${TRADING_DATA_PATH:-/data/trading}/tws-settings:/config
+    # KasmVNC (port 3000) usually responds within 60 s; full TWS login requires manual action.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000 > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - default
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tws.rule=Host(`tws.${DOMAIN}`)"
+      - "traefik.http.routers.tws.entrypoints=websecure"
+      - "traefik.http.routers.tws.tls.certresolver=letsencrypt"
+      # Authelia MFA protects a live trading GUI — do not downgrade to basic auth
+      - "traefik.http.routers.tws.middlewares=authelia@file"
+      - "traefik.http.services.tws.loadbalancer.server.port=3000"
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: trading_timescaledb
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${TRADING_DB_USER:-trading}
+      POSTGRES_PASSWORD: ${TRADING_DB_PASSWORD}
+      POSTGRES_DB: ${TRADING_DB_NAME:-trading}
+    mem_limit: 2g
+    mem_reservation: 1g
+    volumes:
+      - ${TRADING_DATA_PATH:-/data/trading}/timescaledb:/var/lib/postgresql/data
+      # initdb scripts run once on first start (ordered by filename prefix)
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    command: >
+      postgres
+      -c shared_preload_libraries=timescaledb
+      -c max_wal_size=2GB
+      -c shared_buffers=512MB
+      -c wal_compression=on
+      -c timescaledb.telemetry_level=off
+    healthcheck:
+      test: >
+        pg_isready -U ${TRADING_DB_USER:-trading} -d ${TRADING_DB_NAME:-trading}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    # TimescaleDB is internal only — not on proxy network, not accessible externally
+    networks:
+      - default
+
+  data-collector:
+    build:
+      context: ./data-collector
+      dockerfile: Dockerfile
+    container_name: trading_data_collector
+    env_file:
+      - .env
+    environment:
+      TWS_HOST: tws
+      # Port depends on TRADING_MODE; TWS paper default 7497, live default 7496
+      TWS_PORT: ${TWS_API_PORT:-7497}
+      DB_HOST: timescaledb
+      DB_PORT: "5432"
+      DB_USER: ${TRADING_DB_USER:-trading}
+      DB_PASSWORD: ${TRADING_DB_PASSWORD}
+      DB_NAME: ${TRADING_DB_NAME:-trading}
+      TRADING_MODE: ${TRADING_MODE:-paper}
+      PARQUET_PATH: /data/parquet
+      CLIENT_ID: ${COLLECTOR_CLIENT_ID:-1}
+    mem_limit: 512m
+    mem_reservation: 128m
+    volumes:
+      - ${TRADING_DATA_PATH:-/data/trading}/parquet:/data/parquet
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      # tws dependency is service_started because the API socket only becomes available
+      # after the user completes first-time login via KasmVNC — the collector must
+      # implement its own retry/reconnect loop on startup.
+      tws:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - default
+
+  strategy-runner:
+    build:
+      context: ./strategy-runner
+      dockerfile: Dockerfile
+    container_name: trading_strategy_runner
+    env_file:
+      - .env
+    environment:
+      TWS_HOST: tws
+      TWS_PORT: ${TWS_API_PORT:-7497}
+      DB_HOST: timescaledb
+      DB_PORT: "5432"
+      DB_USER: ${TRADING_DB_USER:-trading}
+      DB_PASSWORD: ${TRADING_DB_PASSWORD}
+      DB_NAME: ${TRADING_DB_NAME:-trading}
+      TRADING_MODE: ${TRADING_MODE:-paper}
+      STRATEGIES_CONFIG: /app/strategies.yml
+    mem_limit: 1g
+    mem_reservation: 256m
+    volumes:
+      # strategies.yml and strategy modules are bind-mounted so they can be
+      # edited in code-server and picked up without rebuilding the image
+      - ./strategy-runner/strategies.yml:/app/strategies.yml:ro
+      - ./strategy-runner/src/strategies:/app/strategies:ro
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      tws:
+        condition: service_started
+      data-collector:
+        condition: service_started
+    # strategy-runner is opt-in; start with: docker compose --profile strategies up -d
+    profiles:
+      - strategies
+    restart: unless-stopped
+    networks:
+      - default
+
+networks:
+  default:
+  proxy:
+    external: true
+    name: proxy

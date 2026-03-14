@@ -147,6 +147,17 @@ if [ -d "$SCRIPT_DIR/devtools" ]; then
     fi
 fi
 
+# Step 6: Start Trading stack (optional)
+if [ -d "$SCRIPT_DIR/trading" ]; then
+    echo ""
+    read -p "Start trading services (TWS + TimescaleDB + data-collector)? (y/N): " start_trading
+    if [[ $start_trading =~ ^[Yy]$ ]]; then
+        start_service "Trading (TWS + TimescaleDB + data-collector)" "trading"
+    else
+        echo -e "${YELLOW}!${NC} Skipping trading"
+    fi
+fi
+
 echo ""
 echo "======================================"
 echo -e "${GREEN}All services started successfully!${NC}"
@@ -158,6 +169,7 @@ echo "  - Immich:            https://photos.<your-domain> (requires DNS setup)"
 echo "  - Grafana:           https://grafana.<your-domain> (if enabled)"
 echo "  - Seafile:           https://seafile.<your-domain> (if enabled)"
 echo "  - code-server:       https://vscode.<your-domain> (if enabled)"
+echo "  - TWS (trading):     https://tws.<your-domain> (if enabled)"
 echo ""
 echo "Service Status:"
 cd "$SCRIPT_DIR/traefik" && docker compose ps
@@ -170,6 +182,10 @@ fi
 if [ -d "$SCRIPT_DIR/devtools" ] && [ -f "$SCRIPT_DIR/devtools/docker-compose.yml" ]; then
     echo ""
     cd "$SCRIPT_DIR/devtools" && docker compose ps
+fi
+if [ -d "$SCRIPT_DIR/trading" ] && [ -f "$SCRIPT_DIR/trading/docker-compose.yml" ]; then
+    echo ""
+    cd "$SCRIPT_DIR/trading" && docker compose ps
 fi
 echo ""
 echo "To check logs:"
