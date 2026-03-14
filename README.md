@@ -68,6 +68,7 @@ selfhost/
 ├── local/              # Local helper scripts
 └── server/             # Docker Compose stacks
     ├── traefik/
+    ├── devtools/
     ├── immich/
     ├── monitoring/
     └── scripts/
