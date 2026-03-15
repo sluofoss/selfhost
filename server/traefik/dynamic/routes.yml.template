@@ -1,13 +1,7 @@
 http:
   routers:
-    immich:
-      rule: "Host(`${IMMICH_DOMAIN}`)"
-      service: immich
-      entrypoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-    
+    # api@internal is Traefik's built-in service — not a container, cannot use
+    # Docker labels. This is the only route that must live in the file provider.
     traefik:
       rule: "Host(`traefik.${DOMAIN}`)"
       service: api@internal
@@ -17,24 +11,3 @@ http:
         certResolver: letsencrypt
       middlewares:
         - authelia@file
-
-    grafana:
-      rule: "Host(`grafana.${DOMAIN}`)"
-      service: grafana
-      entrypoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-      middlewares:
-        - authelia@file
-
-  services:
-    immich:
-      loadBalancer:
-        servers:
-          - url: "http://immich_server:2283"
-    
-    grafana:
-      loadBalancer:
-        servers:
-          - url: "http://grafana:3000"
