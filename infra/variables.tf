@@ -81,3 +81,15 @@ variable "thumbnail_volume_size_in_gbs" {
   type        = number
   default     = 200
 }
+
+variable "restrict_web_to_cloudflare" {
+  description = "When true, only allow HTTP/HTTPS ingress from the Cloudflare provider's current IPv4 ranges. SSH is controlled separately."
+  type        = bool
+  default     = false
+}
+
+variable "ssh_allowed_cidrs" {
+  description = "CIDR ranges allowed to access SSH. Defaults to world-open until SSH is moved behind a tighter admin path."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
