@@ -99,6 +99,62 @@ dig photos.yourdomain.com
      - --certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
      ```
 
+### Certificate never issued for a new service
+
+**Symptom**: New service is running, DNS resolves, but no cert in `acme.json` and the
+domain gets a TLS error. Traefik logs at INFO level are silent — no ACME activity.
+
+**Root cause**: Traefik's Docker provider silently skips containers whose Docker health
+status is `unhealthy` or `starting`. If the container is unhealthy, Traefik never
+registers its router and never requests a certificate. This produces no error log at
+INFO level — the container is simply invisible to Traefik.
+
+**Diagnosis**:
+```bash
+# Step 1: Check container health status
+docker ps --format 'table {{.Names}}\t{{.Status}}'
+# Look for "(unhealthy)" or "(health: starting)" next to your container
+
+# Step 2: See why it is unhealthy
+docker inspect <container_name> --format='{{json .State.Health}}' | jq .
+# Check "Log" entries for exit code and output of the healthcheck command
+
+# Step 3: Confirm Traefik sees no router for the domain
+# Enable DEBUG logging temporarily (both places — see Debug Mode section)
+# Look for: "Filtering unhealthy or starting container"
+```
+
+**Fix**:
+
+The healthcheck in the compose file must check a port/service that is *actually running*
+in the image. Common mistakes:
+- Checking a port the image documentation mentions but that is not running (e.g. the
+  image was updated and changed ports, or you assumed a GUI was present).
+- Using `curl -sf` against an HTTP endpoint that returns 4xx or 5xx — the `-f` flag
+  treats those as failure (exit 22), not success.
+
+```bash
+# Find what is actually listening inside the container
+docker exec <container_name> ss -tlnp
+# or
+docker exec <container_name> netstat -tlnp
+
+# Then update the healthcheck to check that port, e.g.:
+# test: ["CMD-SHELL", "nc -z localhost <correct_port>"]
+```
+
+After fixing the healthcheck and redeploying, Traefik will receive the
+`health_status: healthy` Docker event within seconds and immediately register the router
+and trigger ACME certificate issuance.
+
+**Note on DEBUG logging**: Traefik has two log level configurations that must both be
+changed to see debug output:
+1. `--log.level=DEBUG` in the CLI command block in `docker-compose.yml`
+2. `level: DEBUG` in `traefik.yml`
+
+Changing only one of them is not sufficient. Remember to restore both to `INFO` after
+debugging.
+
 ### B2 Mount Not Working
 
 **Symptom**: Photos not appearing, mount point empty
@@ -283,6 +339,78 @@ cat /etc/fstab | grep data
    sudo mkfs.ext4 /dev/sdb
    sudo mount /dev/sdb /data
    ```
+
+## Adding a New Service — Pre-flight Checklist
+
+Lessons from production debugging. Run through this before declaring a new service
+"deployed".
+
+### 1. Healthcheck must match what is actually running
+
+Before writing the healthcheck, verify the ports:
+
+```bash
+# Inspect the image metadata to see what it declares
+docker image inspect <image> --format='{{json .Config.ExposedPorts}}'
+
+# After starting the container, verify what is listening
+docker exec <container> ss -tlnp
+```
+
+Do not trust documentation or assumptions about what port the GUI uses. Images evolve.
+This was the root cause of the `tws.sluofoss.com` cert issue — the healthcheck checked
+port 3000 (assumed KasmVNC) but the image only ran xRDP on port 3389.
+
+Use `nc -z localhost <port>` for TCP port checks. Use `curl -f` only for HTTP endpoints
+that return 2xx — `-f` treats 4xx/5xx as failure (exit 22).
+
+### 2. Traefik will not route to an unhealthy container
+
+Traefik's Docker provider silently skips containers that are `unhealthy` or `starting`.
+No router is registered, no cert is requested, and no error is logged at INFO level.
+
+**Whenever a domain is unreachable or has no TLS cert, check `docker ps` first.**
+An `(unhealthy)` status on the target container is the most common root cause.
+
+### 3. Cert issuance depends on the router being registered
+
+The ACME certificate request is triggered by Traefik detecting a router with
+`tls.certresolver=letsencrypt`. That only happens after the container is healthy.
+The full dependency chain is:
+
+```
+container healthy → Traefik sees health_status:healthy event
+                  → Docker provider registers router
+                  → Traefik requests ACME DNS-01 cert via Cloudflare
+                  → Cert appears in acme.json
+```
+
+If any step in this chain is missing, no error is surfaced at INFO level. Enable DEBUG
+logging to trace the issue (see Debug Mode section — change both `docker-compose.yml`
+and `traefik.yml`, not just one).
+
+### 4. Decide the auth policy before deployment
+
+Before adding Traefik labels, decide whether the service uses Authelia or bypasses it,
+and why. See `docs/04-services/authelia.md` for the policy matrix and guidance on when
+bypass is and is not appropriate. Adding the wrong middleware after the fact is easy to
+miss in testing.
+
+### 5. Verify end-to-end after startup
+
+```bash
+# Container is healthy
+docker ps | grep <service>
+
+# Router is registered in Traefik (wait up to 60s after healthy)
+# Navigate to https://traefik.<DOMAIN> → HTTP → Routers and confirm the router appears
+
+# Cert is issued (wait up to 2 min for DNS-01 propagation)
+# Check: cat ~/selfhost/server/traefik/letsencrypt/acme.json | jq '.letsencrypt.Certificates[].domain'
+
+# HTTPS works
+curl -I https://<subdomain>.<DOMAIN>
+```
 
 ## Getting Help
 

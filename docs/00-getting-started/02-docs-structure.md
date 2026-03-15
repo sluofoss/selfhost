@@ -64,11 +64,11 @@ This folder contains everything you need to understand, set up, and operate the 
 
 **When**: Using a specific service (Immich, Traefik, etc.)
 
-Currently placeholder for service-specific documentation:
-- Traefik configuration
-- Immich features
-- Monitoring setup
-- Future services (Nextcloud, etc.)
+| File | Purpose |
+|------|---------|
+| [authelia.md](../04-services/authelia.md) | Auth policy per service — why Immich bypasses Authelia, when to use bypass vs MFA |
+| [devtools.md](../04-services/devtools.md) | code-server and Ollama stack overview |
+| [trading.md](../04-services/trading.md) | Trading database layout, update flow, and backup/export ownership |
 
 ### 05-development/
 
@@ -91,7 +91,9 @@ Currently placeholder for:
 | Start/stop services | [03-operations/daily-operations.md](../03-operations/daily-operations.md) |
 | Fix something broken | [03-operations/troubleshooting.md](../03-operations/troubleshooting.md) |
 | Set up backups | [03-operations/backup-restore.md](../03-operations/backup-restore.md) |
-| Add a new service | [04-services/](../04-services/) (future) |
+| Understand trading DB flow | [04-services/trading.md](../04-services/trading.md) |
+| Add a new service (checklist) | [03-operations/troubleshooting.md#adding-a-new-service--pre-flight-checklist](../03-operations/troubleshooting.md#adding-a-new-service--pre-flight-checklist) |
+| Understand auth / Authelia policy | [04-services/authelia.md](../04-services/authelia.md) |
 | See what's planned | [01-architecture/roadmap.md](../01-architecture/roadmap.md) |
 
 ## Contributing to Docs

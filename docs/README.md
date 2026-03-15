@@ -12,6 +12,7 @@ A production-ready, cost-effective ($0-7/month) self-hosted infrastructure for p
 |--------------|-------|
 | **Get started immediately** | [Getting Started Guide](00-getting-started/00-index.md) |
 | **Understand the architecture** | [Architecture Overview](01-architecture/overview.md) |
+| **See the trading database flow** | [Trading Service](04-services/trading.md) |
 | **Review the Immich storage decision** | [Immich Storage Decision](01-architecture/immich-storage-decision.md) |
 | **Set up DNS & SSL** | [DNS Configuration](02-setup/dns-configuration.md) |
 | **Operate it daily** | [Operations Guide](03-operations/daily-operations.md) |
@@ -69,7 +70,9 @@ selfhost/
 └── server/             # Docker Compose stacks
     ├── traefik/        # Reverse proxy
     ├── immich/         # Photo management
+    ├── devtools/       # Browser-based development tools
     ├── monitoring/     # Grafana + Prometheus
+    ├── trading/        # TWS + TimescaleDB + data collector
     └── scripts/        # Backup & setup scripts
 ```
 
