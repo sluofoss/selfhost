@@ -1,9 +1,12 @@
 name: trading
 
 services:
-  # Full Trader Workstation — handles IBKR auth, exposes API socket and KasmVNC browser GUI.
-  # First-time login: open https://tws.${DOMAIN} in browser, complete IBKR login via KasmVNC.
-  # After first login TWS maintains auto-reconnect; API socket becomes available to other services.
+  # Full Trader Workstation — handles IBKR auth via IBC, exposes TWS API socket.
+  # Desktop access is via xRDP on port 3389 (SSH-tunnelled; see ports comment below).
+  # Browser-based access (Guacamole) is a future improvement tracked in the workbench.
+  # First-time login: SSH tunnel to port 3389 and use an RDP client (e.g. mstsc).
+  # IBC will auto-login if TWS_USERID/TWS_PASSWORD in .env are correct; otherwise
+  # log in manually from the RDP session. After login the API socket becomes available.
   tws:
     image: ghcr.io/gnzsnz/tws-rdesktop:latest
     container_name: trading_tws
@@ -23,6 +26,13 @@ services:
     mem_reservation: 1g
     volumes:
       - ${TRADING_DATA_PATH:-/data/trading}/tws-settings:/config
+    # Publish xRDP to the Docker host localhost only — never to 0.0.0.0.
+    # External access is via an SSH tunnel from the client:
+    #   ssh -L 13389:localhost:3389 ubuntu@<server-ip> -N
+    # Then connect an RDP client to localhost:13389 (use 13389 on Windows to
+    # avoid conflict with the local Windows RDP listener on 3389).
+    ports:
+      - "127.0.0.1:3389:3389"
     # Check xRDP port 3389 (the actual running service in this image).
     # This image uses xRDP for desktop access, NOT noVNC/KasmVNC — port 3000 is
     # never served. Checking port 3389 ensures Traefik sees the container as
