@@ -12,6 +12,71 @@ This page documents the current trading-service database setup implemented in:
 
 No Mermaid chart existed for the trading service before this page.
 
+## TWS Desktop Access
+
+The TWS container (`trading_tws`) runs an xRDP server on port 3389. Access requires an
+SSH tunnel — the port is bound to `127.0.0.1` on the server and is never exposed publicly.
+
+### Connecting from Windows (WSL + mstsc)
+
+```bash
+# In WSL (where your SSH key lives) — keep this terminal open
+ssh -i ~/.ssh/id_ed25519 -L 13389:localhost:3389 ubuntu@<server-ip> -N &
+```
+
+Then open **Remote Desktop Connection** (`mstsc`) on Windows → connect to `localhost:13389`.
+
+At the xRDP login screen:
+- **Session**: `Xvnc`
+- **Username**: `abc`
+- **Password**: `abc` (default) — see security note below
+
+### Connecting from macOS or Linux
+
+Install Microsoft Remote Desktop (macOS App Store) or `remmina`/`xfreerdp` (Linux),
+run the same SSH tunnel, connect to `localhost:13389`.
+
+Or use xfreerdp directly from the terminal (skipping a separate RDP app):
+
+```bash
+ssh -i ~/.ssh/id_ed25519 -L 13389:localhost:3389 ubuntu@<server-ip> -N &
+xfreerdp /v:localhost:13389 /u:abc /p:abc /cert:ignore /dynamic-resolution
+```
+
+### Security note — change the default password
+
+The `abc`/`abc` username and password is the published linuxserver.io default. Anyone
+familiar with these images knows it. The xRDP port is only reachable via SSH tunnel, so
+the practical risk is limited — but for a live trading GUI, change it:
+
+```yaml
+# In server/trading/docker-compose.yml, under tws environment:
+environment:
+  PASSWORD: your-strong-password   # sets the abc user password inside the container
+```
+
+### IBC auto-login
+
+IBC reads credentials from `.env` (`TWS_USERID`, `TWS_PASSWORD`) and submits them to the
+TWS login dialog automatically on startup. If auto-login fails, the TWS login dialog
+remains open in the desktop session — log in manually. Once logged in, the API socket
+becomes available on port 7497 (paper) / 7496 (live) for the data-collector.
+
+### First-time TWS API setup (one-time)
+
+On a fresh container with a new `tws-settings` volume, the TWS API socket is disabled by
+default. Enable it once from the desktop session:
+
+`Edit` → `Global Configuration` → `API` → `Settings`
+- Check **Enable ActiveX and Socket Clients**
+- Socket port: `7497` (paper) or `7496` (live)
+- Trusted IPs: add `172.0.0.0/8` (Docker network range)
+- Click **Apply** → **OK**
+
+This setting persists in the `tws-settings` Docker volume across container restarts.
+
+---
+
 ## Current state summary
 
 - Primary database container: `trading_timescaledb` (`timescale/timescaledb:latest-pg16`), internal-only on the trading Docker network.

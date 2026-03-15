@@ -21,6 +21,9 @@ services:
       TZ: ${TZ:-UTC}
       PUID: "1000"
       PGID: "1000"
+      # Set the xRDP/desktop login password for the abc user.
+      # Default is 'abc' — change this, especially for live trading.
+      # PASSWORD: ${TWS_DESKTOP_PASSWORD:-abc}
     shm_size: 1gb
     mem_limit: 2g
     mem_reservation: 1g
