@@ -19,3 +19,9 @@ feedback:
   - would it be helpful to have a mounted volume for the vscode container that is backed up to backblaze? this essentially will contain a lot of  small changes ing files i a come from npm and stuff. so perhaps it is better to wait after seafile implementation. what do you think? #wait-until-seafile
 
 - 1 issue i just found about about immich is that as mentioned in https://www.reddit.com/r/immich/comments/1n4hyso/large_video_uploads_stalling_problem_solved/ cloudflare free has a limit on file upload size of 300mb. so all my large video uploads from android are getting screwed. what are some ways to circumvent this? the mentioned soln was intended for local home deployment and because this is for cloud, i'm not sure how different it is. can you create a ticket to investigate this and find a solution?
+
+
+- please review all the completed wb items and vet the current state within this repo config (./server) and doc and setup instructions and maintennance instructions (./docs) to see if they match and report on any discrepancies. 
+
+
+- what is the current volume status for the code server? where are the data backed up? (directly b2 or some seafile magic? because it might have a lot of small files such as python env packages or npm hell, b2's per file transaction might bget ridiculously high, try to estimate cost and see if we can reduce it)
