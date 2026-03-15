@@ -1,6 +1,6 @@
 ---
-# Authelia configuration template
-# Replace "example.com" with your actual domain before deploying.
+# Authelia configuration
+# Domain is injected via the DOMAIN env var in server/authelia/.env
 # Docs: https://www.authelia.com/configuration/prologue/introduction/
 
 server:
@@ -13,7 +13,7 @@ theme: dark
 
 # TOTP settings — issuer name shown in authenticator apps
 totp:
-  issuer: example.com
+  issuer: '{{ env "DOMAIN" }}'
   period: 30
   skew: 1
 
@@ -41,26 +41,26 @@ access_control:
   default_policy: deny
   rules:
     # Authelia portal itself — must be bypassed or it recursively auth-gates itself
-    - domain: auth.example.com
+    - domain: 'auth.{{ env "DOMAIN" }}'
       policy: bypass
 
     # Immich: owns its own auth layer; mobile apps use Bearer tokens incompatible
     # with forward-auth redirects — keep fully bypassed
-    - domain: photos.example.com
+    - domain: 'photos.{{ env "DOMAIN" }}'
       policy: bypass
 
     # immich-public-proxy: serves public share links, intentionally no auth
-    - domain: share.example.com
+    - domain: 'share.{{ env "DOMAIN" }}'
       policy: bypass
 
     # CouchDB / Obsidian LiveSync: uses HTTP Basic Auth internally — must not
     # have forward-auth; placed on dedicated subdomain completely bypassed
-    - domain: obsidian.example.com
+    - domain: 'obsidian.{{ env "DOMAIN" }}'
       policy: bypass
 
     # Navidrome Subsonic API: mobile music clients use HTTP Basic Auth on /rest/
     # and /share/ — bypass those paths, protect the web UI
-    - domain: music.example.com
+    - domain: 'music.{{ env "DOMAIN" }}'
       resources:
         - "^/rest(/.*)?$"
         - "^/share(/.*)?$"
@@ -69,7 +69,7 @@ access_control:
 
     # Seafile API and sync paths: desktop/mobile clients use token auth on these
     # endpoints — bypass them, protect only the web UI
-    - domain: files.example.com
+    - domain: 'files.{{ env "DOMAIN" }}'
       resources:
         - "^/api(/.*)?$"
         - "^/api2(/.*)?$"
@@ -78,25 +78,29 @@ access_control:
       policy: bypass
 
     # Admin-only surfaces: two-factor required
-    - domain: traefik.example.com
+    - domain: 'traefik.{{ env "DOMAIN" }}'
       subject: "user:sean"
       policy: two_factor
 
-    - domain: vscode.example.com
+    - domain: 'vscode.{{ env "DOMAIN" }}'
+      subject: "user:sean"
+      policy: two_factor
+
+    - domain: 'tws.{{ env "DOMAIN" }}'
       subject: "user:sean"
       policy: two_factor
 
     # Grafana: one-factor for admins group
-    - domain: grafana.example.com
+    - domain: 'grafana.{{ env "DOMAIN" }}'
       subject: "group:admins"
       policy: one_factor
 
     # Seafile web UI: one-factor for any authenticated user
-    - domain: files.example.com
+    - domain: 'files.{{ env "DOMAIN" }}'
       policy: one_factor
 
     # Navidrome web UI: one-factor for any authenticated user
-    - domain: music.example.com
+    - domain: 'music.{{ env "DOMAIN" }}'
       policy: one_factor
 
 # Session management
@@ -104,8 +108,8 @@ access_control:
 session:
   cookies:
     - name: authelia_session
-      domain: example.com
-      authelia_url: "https://auth.example.com"
+      domain: '{{ env "DOMAIN" }}'
+      authelia_url: 'https://auth.{{ env "DOMAIN" }}'
       same_site: lax
       expiration: 12h
       inactivity: 1h

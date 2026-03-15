@@ -15,6 +15,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    command: --config /config/configuration.yml.tmpl
     env_file:
       - .env
     environment:
@@ -22,6 +23,8 @@ services:
       # JWT_SECRET in .env is the shared secret for identity tokens.
       - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET=${JWT_SECRET}
       # Session and storage secrets are provided directly via env_file
+      # Enable Go template processing in configuration.yml.tmpl
+      - X_AUTHELIA_CONFIG_FILTERS=template
     volumes:
       - ./config:/config
     expose:
