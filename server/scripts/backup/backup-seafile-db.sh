@@ -17,6 +17,7 @@ if [ -f "$SERVER_DIR/seafile/.env" ]; then
     set -a; source "$SERVER_DIR/seafile/.env"; set +a
 fi
 source "$SCRIPT_DIR/../lib/rclone-env.sh"
+source "$SCRIPT_DIR/../lib/notify-telegram.sh"
 
 BACKUP_DIR="/data/backups/seafile-db"
 B2_BUCKET="${B2_BUCKET_NAME:?B2_BUCKET_NAME not set - configure server/.env}"

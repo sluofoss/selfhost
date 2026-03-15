@@ -13,6 +13,7 @@ if [ -f "$SERVER_DIR/.env" ]; then
     set -a; source "$SERVER_DIR/.env"; set +a
 fi
 source "$SCRIPT_DIR/../lib/rclone-env.sh"
+source "$SCRIPT_DIR/../lib/notify-telegram.sh"
 
 # Configuration
 BACKUP_ROOT="/data/backups/weekly"
